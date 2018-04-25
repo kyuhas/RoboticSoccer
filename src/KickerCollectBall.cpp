@@ -33,6 +33,8 @@
 #define R 2
 #define MIN_RADIUS 0
 #define MAX_RADIUS 0
+#define MID_X_LOW = 310;
+#define MID_X_HIGH = 330;
 
 // constant time for how frequently to check if the ball is still there
 const int NUM_SECONDS = 5;
@@ -99,6 +101,7 @@ class KickerRobot
         isKickingBall = false;
         inFrontOfGoal = false;
         //inGame = false;
+        goalSet = false;
     }
     // destructor
     ~KickerRobot() {}
@@ -110,6 +113,7 @@ class KickerRobot
         return floor((distMeters * 10 + 0.5)) / 10;
     }
 
+    // if we have reached our goal, goalSet is now false
     void mbControllerResultCallback(const std_msgs::String::ConstPtr &msg)
     {
         if (goalSet && strcmp(msg->data.c_str(), "true") == 0)
@@ -136,44 +140,43 @@ class KickerRobot
     }
 
     // method to send the ball to a specific location
-    bool moveToLocation(move_base_msgs::MoveBaseGoal goal)
+    void moveToLocation(move_base_msgs::MoveBaseGoal goal)
     {
-        MoveBaseClient ac("move_base", true);
-
-        // wait for the action server to come up
-        while (!ac.waitForServer(ros::Duration(5.0)))
-            ROS_INFO("Waiting for the move_base action server to come up");
-
-        ROS_INFO("AC Server is up");
-        ROS_INFO("Sending goal");
-
-        ac.sendGoal(goal);
-        ac.waitForResult();
-
-        if (ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
-        {
-            ROS_INFO("Goal success");
-            return true;
-        }
-
-        else
-        {
-            ROS_INFO("Goal failure");
-            return false;
-        }
+        goalSet = true;
+        mbcPub.publish(goal);
     }
 
     // method to actually kick the ball into the goal
-    // TODO: edit this method further
+    // TODO: KAYLEE WILL TEST THIS IN GAZEBO
     void kickBall()
     {
+        isKickingBall = true;
+        
+        //determine if the goalie is on the left of the right of the image
+        bool onLeft = goalieOnLeft(objDist[BLUE]);
+        
+        //set angular velocity based on goalie's position
+        twistMsg.angular.z = onLeft? -0.5 : 0.5;
+        twistMsg.linear.x = 0;
+        
+        //publish ths message
+        velPub.publish(twistMsg);
+        
+        //TODO: maybe wait a moment?
+        
         // move backward
         twistMsg.linear.x = -0.5;
+        twistMsg.angular.z = 0;
         velPub.publish(twistMsg);
-        //TODO: should we add a time pause here?
+        
+        //TODO: maybe wait a moment
+        
         // move forward quickly
         twistMsg.linear.x = 1.0;
+        twistMsg.angular.z = 0;
         velPub.publish(twistMsg);
+        
+        isKickingBall = false;
     }
 
     // check to see if the ball has been "captured" by the robot
@@ -182,34 +185,10 @@ class KickerRobot
         return (objDist[RED] <= 0.35 && !isEmpty[RED]);
     }
 
-    // method to have the kicker face the goal
-    void lookAtGoal()
-    {
-        ROS_INFO("I have the red ball, and I am rotating towards the goal.");
-        goalSet = true;
-
-        if (botVelX != 0.0 || botAngZ != 0.0)
-        {
-            twistMsg.linear.x = 0.0;
-            twistMsg.angular.z = 0.0;
-            velPub.publish(twistMsg);
-        }
-
-        ROS_INFO("Attempting to look at goal.");
-        move_base_msgs::MoveBaseGoal goal;
-        goal.target_pose.header.frame_id = "base_link";
-        goal.target_pose.header.stamp = ros::Time::now();
-        goal.target_pose.pose.orientation.w = 1.0;
-        goal.target_pose.pose.position.x = kickerPos.position.x;
-        goal.target_pose.pose.position.y = kickerPos.position.y;
-
-        mbcPub.publish(goal);
-    }
-
     // method to have the robot move to the ball's location or look for the ball
     void moveTurtleBot(bool rotate = false, bool alignBlueBall = false)
     {
-        if (goalSet)
+        if (goalSet || isKickingBall)
             return;
 
         twistMsg.angular.z = -alignErrorRed / 225.0; // 225 worked well as a denominator to smooth the alignment
@@ -231,10 +210,6 @@ class KickerRobot
             ROS_INFO("Rotating so that I am centered on blue ball");
         }
 
-        // Note: should no longer have issue with this after initializing bools in constructor
-        else if (isKickingBall)
-            return; //do not move the robot with this method if the ball is being kicked
-
         else if (!hasRedBall())
         {
             twistMsg.linear.x = (0.3 * objDist[RED]);
@@ -242,23 +217,22 @@ class KickerRobot
         }
 
         else if (hasRedBall() && isEmpty[BLUE]) {
-            //lookAtGoal();
-            ROS_INFO("Looking for dat blue ball, yo");
-	    twistMsg.linear.x = 0;
-	    twistMsg.angular.z = 0.2;
-	}
+            // we are now looking for the goal
+            ROS_INFO("Looking for the blue ball");
+	        twistMsg.linear.x = 0;
+	        twistMsg.angular.z = 0.2;
+	    }
 
-        /*
-        // I don't think we should be doing this here. commenting out for now
         else if (hasRedBall() && !isEmpty[BLUE])
         {
-            if (objDist[BLUE] > 1.0 && distToGoalCenter() > 2.5)
+            // if you are far away from the goal, move toward it. otherwise, try to kick the ball
+            if (objDist[BLUE] > 2.5)
                 twistMsg.linear.x = 0.3 * objDist[BLUE];
 
             else
                 kickBall();
         }
-        */
+        
 
         if (twistMsg.linear.x > MAX_BOT_VEL)
             twistMsg.linear.x = MAX_BOT_VEL;
@@ -289,56 +263,20 @@ class KickerRobot
         return goalieYPos < goalCenterY;
     }
 
-    void aimAtGoal(bool aimLeft = false)
-    {
-        move_base_msgs::MoveBaseGoal target;
-        if (aimLeft)
-        {
-            // go to the "left goal" point and kick
-            target.target_pose.header.frame_id = "base_link";
-            target.target_pose.header.stamp = ros::Time::now();
-            target.target_pose.pose.position.x = -2.0;
-            target.target_pose.pose.position.y = 2.5;
-            target.target_pose.pose.position.z = 0.406; // is this necessary?
-        }
-        else
-        {
-            // go to the "right goal" point and kick
-            target.target_pose.header.frame_id = "base_link";
-            target.target_pose.header.stamp = ros::Time::now();
-            target.target_pose.pose.position.x = -2.0;
-            target.target_pose.pose.position.y = 1.0;
-            target.target_pose.pose.position.z = 0.406; // is this necessary?
-        }
-
-        // move to the corresponding goal location and kick ball once there
-        if (moveToLocation(target))
-            kickBall();
-    }
-
     // method to track the ball
     void trackBall(std::vector<cv::Vec3f> circleIMG, cv::Mat colorIMG, cv::Mat srcIMG, int color)
     {
         // if the image does not contain any of the color we are looking for, give that color a zero distance
-	isEmpty[color] = (circleIMG.empty() && colorIMG.empty());
+	    isEmpty[color] = (circleIMG.empty() && colorIMG.empty());
         if (isEmpty[color])
-	{
-	    ROS_INFO("isEmpty");
             objDist[color] = 0.0;
-	}
 
-	//has red ball bool to use in this method
-	bool hasRed = hasRedBall();
+	    //has red ball bool to use in this method
+	    bool hasRed = hasRedBall();
 
         // we will only consider what to do with blue ball if kicker has the red ball
         if (!hasRed && color == BLUE)
             return;
-
-	//debug
-	if (hasRed)
-	{
-		ROS_INFO("The ball is mine.");
-	}
 
         // if we don't have the red ball and the image does not contain red, rotate the TurtleBot until red ball is found
         if (!hasRed && isEmpty[RED])
@@ -404,20 +342,10 @@ class KickerRobot
                     alignErrorBlue = objCoord[BLUE][X] - (IMG_WIDTH_PX / 2.0);
                     moveTurtleBot(false, true);
 
-                    double tolerance = 0.05;
-
-                    // if the kicker is looking at the goal
-                    // TODO: need to test this still
-                    if (kickerPos.orientation.w >= 1 - tolerance)
-                    {
-                        if (goalieOnLeft(objDist[BLUE]))
-                            aimAtGoal();
-
-                        else
-                            aimAtGoal(true);
-                    }
+                    // if the blue ball is close to the center of the frame, move turtlebot
+                    if (objCoord[BLUE][X] <= MID_X_HIGH && objCoord[BLUE][X] >= MID_X_LOW)
+                        moveTurtleBot();
                 }
-
                 */
             }
         }
@@ -469,7 +397,7 @@ class KickerRobot
         }
 
         trackBall(redCircleIMG, redIMG, srcIMG, RED);
-	trackBall(blueCircleIMG, blueIMG, srcIMG, BLUE);
+	    trackBall(blueCircleIMG, blueIMG, srcIMG, BLUE);
 
         // Update GUI Window and publish modified stream
         cv::imshow(OPENCV_WINDOW, cvPtr->image);
