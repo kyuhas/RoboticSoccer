@@ -44,7 +44,8 @@ static std::vector<std::vector<int> > objCoords = {{0, 0, 0}, {0, 0, 0}}; // RED
 #define MIN_RADIUS 0
 #define MAX_RADIUS 0
 
-static bool ballInRange, inGame, turningLeftNoBallFound;
+static bool ballInRange, inGame, turningLeftNoBallFound, goalSet;
+static bool turningSide, turnBackToCenter, moveForward, isBlocking, blockingOnLeft;
 
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
@@ -59,7 +60,11 @@ class GoalieRobot {
 	ros::Publisher velPub = nodeHandle_.advertise<geometry_msgs::Twist>("/cmd_vel_mux/input/teleop", 1);
     geometry_msgs::Twist twistMsg;
     geometry_msgs::Pose goaliePos;
-	//cv::Point redBallCenter;
+	
+	ros::Subscriber mbcSub = nodeHandle_.subscribe("/move_base_controller_result", 10, &KickerRobot::mbControllerResultCallback, this);
+	ros::Publisher mbcPub = nodeHandle_.advertise<move_base_msgs::MoveBaseGoal>("/goal_location", 1);
+	
+	int moveForwardCount;
   	
 	public:
 		//constructor
@@ -75,6 +80,13 @@ class GoalieRobot {
 			inGame = false;
 			ballInRange = false;
 			turningLeftNoBallFound = false;
+			goalSet = false;
+			turningSide = false;
+			turnBackToCenter = false;
+			moveForward = false;
+			isBlocking = false;
+			
+			moveForwardCount = 0;
 		}
 		//destructor
 		~GoalieRobot() {}
@@ -85,6 +97,13 @@ class GoalieRobot {
 		    return floor((distMeters*10 + 0.5))/10;
 		}
 		
+		// if we have reached our goal, goalSet is now false
+    	void mbControllerResultCallback(const std_msgs::String::ConstPtr &msg)
+    	{
+        	if (goalSet && strcmp(msg->data.c_str(), "true") == 0)
+            	goalSet = false;
+    	}
+		
 		// method to set the pose of the goalie robot. If out of goal bounds, move 
 		// to the center of the goal
 		void setPose(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg) {
@@ -94,24 +113,78 @@ class GoalieRobot {
 				moveToLocation(getStartingLocation());
 			}
 		}
-
-		// dist represents the distance from the goalie to the red ball 
-		// returns true if going left, false if going right
-		bool ballIsGoingLeft(double dist) {
-			// get the robot's orientation in radians
-			double theta = 2*acos(goaliePos.orientation.w);
-			double dx = dist*cos(theta);
-			double dy = dist*sin(theta);
-			double ballXPos = goaliePos.position.x + dx;
-			double ballYPos = goaliePos.position.y + dy;
-			// we will determine if the ball if coming in from the left or right based on the ballYPos
+		
+		// method to have the goalie rotate left or right
+		void rotateGoalie(bool rotateLeft = false) 
+		{
+		
+			// if you have not yet turned left
+			if (!turningSide)
+			{
+				// create rotate goal  
+				move_base_msgs::MoveBaseGoal goal;
+		    	goal.target_pose.header.frame_id = "base_link";
+  				goal.target_pose.header.stamp = ros::Time::now();
+  				goal.target_pose.pose.position.x = goaliePos.x;
+  				goal.target_pose.pose.position.y = goaliePos.y;
+				goal.target_pose.pose.position.z = goaliePos.z;
+  				goal.target_pose.pose.orientation.z = 0.707;
+				goal.target_pose.pose.orientation.q = (rotateLeft)? -0.707 : 0.707;
 			
-			return ballYPos < goalCenterY;
+				// publish rotate left goal
+				goalSet = true;
+            	mbcPub.publish(goal);
+				turningSide = true;
+				return;
+			}
+			
+			// if the turn left goal has finished and we have not yet moved forward three times
+			if (!goalSet && turningSide && moveForwardCount < 3) 
+			{
+				moveForward = true;
+				twistMsg.angular.z = 0;
+				twistMsg.linear.z = 0.5;
+				velPub.publish(twistMsg);
+				moveForwardCount++;
+				return;
+			}
+			
+			// if we have finished moving forward
+			if (moveForward) {
+				turningSide = false;
+				moveForward = false;
+				moveForwardCount = 0;
+				
+				turnBackToCenter = true;
+				
+				// create rotate back to center goal -- turn to pi radians 
+				move_base_msgs::MoveBaseGoal goal;
+		    	goal.target_pose.header.frame_id = "base_link";
+  				goal.target_pose.header.stamp = ros::Time::now();
+  				goal.target_pose.pose.position.x = goaliePos.x;
+  				goal.target_pose.pose.position.y = goaliePos.y;
+				goal.target_pose.pose.position.z = goaliePos.z;
+  				goal.target_pose.pose.orientation.z = 1;
+			
+				// publish rotate to center goal
+				goalSet = true;
+            	mbcPub.publish(goal);
+				return;
+			}
+			
+			// if we have finished turning back to center
+			if (!goalSet && turnBackToCenter)
+			{
+				turnBackToCenter = false;
+				return;
+			}
 		}
+
 
 		// method to have the robot move so that it can see the ball
 		void moveTurtleBot(bool ballNotFound = false)
 		{
+		
 			// TODO: possibly prevent the robot from rotating at all until ball is close
 			/*
 			// if the goalie has not yet found the ball
@@ -157,8 +230,15 @@ class GoalieRobot {
 			// tune this value later
 			if (objDist[RED]) <= 1.5) 
 			{
-				// determine if ball is on the left or the right
-				// TODO: KAYLEE -- implement this once my laptop has charged 
+				isBlocking = true;
+				bool onLeft = (objCoord[RED][X] <= 310);
+				if (objCoord[RED][X] <= 310)
+					isBlockingOnLeft = true;
+
+				else if (objCoord[RED][X] >= 330)
+					isBlockingOnLeft = false;
+				
+				rotateGoalie(isBlockingOnLeft);
 			}
 			
 		}
@@ -180,6 +260,13 @@ class GoalieRobot {
     	}
 
 	    void trackBall(std::vector<cv::Vec3f> circleIMG, cv::Mat srcIMG){
+
+			if (isBlocking)
+			{
+				rotateGoalie(isBlockingOnLeft);
+				return;
+			}
+
 
 			if (circleIMG.empty()){
 				objDist[RED] = 0.0;
@@ -282,6 +369,7 @@ class GoalieRobot {
   			startingLocation.target_pose.header.stamp = ros::Time::now();
   			startingLocation.target_pose.pose.position.x = (goalLowerX + goalUpperX)/2.0;
   			startingLocation.target_pose.pose.position.y = 1.0;
+			startingLocation.target_pose.pose.position.z = kickerPos.z;
   			startingLocation.target_pose.pose.orientation.z = 1;
             return startingLocation;
 		}
