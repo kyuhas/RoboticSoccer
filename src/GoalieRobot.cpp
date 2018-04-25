@@ -110,7 +110,10 @@ class GoalieRobot {
 		}
 
 		// method to have the robot move so that it can see the ball
-		void moveTurtleBot(bool ballNotFound = false){
+		void moveTurtleBot(bool ballNotFound = false)
+		{
+			// TODO: possibly prevent the robot from rotating at all until ball is close
+			/*
 			// if the goalie has not yet found the ball
             if (ballNotFound){
             	// if the goalie has turned too far in one direction
@@ -149,6 +152,15 @@ class GoalieRobot {
 			else {
 				// TODO: if the robot can move right, move it right
 			}
+			*/
+			
+			// tune this value later
+			if (objDist[RED]) <= 1.5) 
+			{
+				// determine if ball is on the left or the right
+				// TODO: KAYLEE -- implement this once my laptop has charged 
+			}
+			
 		}
 
 		//method to get the current velocity of the robot
