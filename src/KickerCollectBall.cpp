@@ -147,7 +147,7 @@ class KickerRobot
     }
 
     // method to actually kick the ball into the goal
-    // TODO: KAYLEE WILL TEST THIS IN GAZEBO
+    // TODO: TEST THIS IN GAZEBO ONCE BALL "STICKS"
     void kickBall()
     {
         isKickingBall = true;
@@ -435,52 +435,17 @@ class KickerRobot
     // method where the robot decides which action to take (try to make goal or search for ball)
     void playSoccer(const sensor_msgs::ImageConstPtr &msg)
     {
-        searchForBall(msg);
-
-        /*
 		if (!inGame)
 			return;
 
+        // I greatly simplified this since our trackBall method takes care of everything this method previously did
+        searchForBall(msg);
 
-		if (!hasRedBall())
-			searchForBall(msg);
-		*/
-
-        // if you have the ball -- either check to make sure it is there or kick it if you are not
-        // already doing so
-        /*
-		else
-		{
-			// add periodic check to make sure the ball is still there
-			time_counter += (double)(this_time - last_time);
-			if (time_counter > (double)(NUM_SECONDS * CLOCKS_PER_SEC))
-			{
-				// check to see if the ball is still in the robot's grasp
-				time_counter -= (double)(NUM_SECONDS * CLOCKS_PER_SEC);
-			}
-			else
-			{
-
-				if (!isKickingBall)
-				{
-					// assume we still have ball and go to the goal
-					isKickingBall = true;
-					bool didReachGoalPos = moveToLocation(getKickLocation());
-					if (didReachGoalPos)
-						kickBall();
-					isKickingBall = false;
-				}
-			}
-		}
-		*/
     }
 
     // method to handle game commands
     void gameCommandCallback(const std_msgs::String::ConstPtr &msg)
     {
-
-        inGame = true;
-
         /*
 		inGame = false;
 
