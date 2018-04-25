@@ -1,0 +1,59 @@
+Language model created by QuickLM on Fri Apr 20 09:46:29 EDT 2018
+Copyright (c) 1996-2010 Carnegie Mellon University and Alexander I. Rudnicky
+
+The model is in standard ARPA format, designed by Doug Paul while he was at MITRE.
+
+The code that was used to produce this language model is available in Open Source.
+Please visit http://www.speech.cs.cmu.edu/tools/ for more information
+
+The (fixed) discount mass is 0.5. The backoffs are computed using the ratio method.
+This model based on a corpus of 6 sentences and 11 words
+
+\data\
+ngram 1=11
+ngram 2=15
+ngram 3=10
+
+\1-grams:
+-0.8653 </s> -0.3010
+-0.8653 <s> -0.2374
+-1.6435 FIELD -0.2374
+-1.6435 GOALIE -0.2808
+-1.6435 KICKER -0.2808
+-1.6435 MOVE -0.2910
+-1.6435 PAUSE -0.2374
+-1.6435 START -0.2374
+-1.6435 STOP -0.2374
+-1.6435 TO -0.2910
+-1.3424 WINS -0.2374
+
+\2-grams:
+-1.0792 <s> GOALIE 0.0000
+-1.0792 <s> KICKER 0.0000
+-1.0792 <s> MOVE 0.0000
+-1.0792 <s> PAUSE 0.0000
+-1.0792 <s> START 0.0000
+-1.0792 <s> STOP 0.0000
+-0.3010 FIELD </s> -0.3010
+-0.3010 GOALIE WINS 0.0000
+-0.3010 KICKER WINS 0.0000
+-0.3010 MOVE TO 0.0000
+-0.3010 PAUSE </s> -0.3010
+-0.3010 START </s> -0.3010
+-0.3010 STOP </s> -0.3010
+-0.3010 TO FIELD 0.0000
+-0.3010 WINS </s> -0.3010
+
+\3-grams:
+-0.3010 <s> GOALIE WINS
+-0.3010 <s> KICKER WINS
+-0.3010 <s> MOVE TO
+-0.3010 <s> PAUSE </s>
+-0.3010 <s> START </s>
+-0.3010 <s> STOP </s>
+-0.3010 GOALIE WINS </s>
+-0.3010 KICKER WINS </s>
+-0.3010 MOVE TO FIELD
+-0.3010 TO FIELD </s>
+
+\end\

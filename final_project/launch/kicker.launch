@@ -1,0 +1,22 @@
+<launch>
+  <include file="/opt/ros/indigo/share/turtlebot_bringup/launch/minimal.launch" />
+
+  <include file="/opt/ros/indigo/share/usb_cam/launch/usb_cam-test.launch" name="usb">
+	<param name="video_device" value="/dev/video1" />
+  </include>
+
+  <include file="/opt/ros/indigo/share/turtlebot_navigation/launch/amcl_demo.launch" name="nav">
+	<arg name="map_file" value="/home/kyuhas/catkin_ws/src/final_project/params/map.yaml" />
+  </include>
+
+  <node name="recognizer" pkg="pocketsphinx" type="recognizer.py" output="screen">
+    <param name="lm" value="/home/kyuhas/catkin_ws/src/final_project/params/8403.lm"/>
+    <param name="dict" value="/home/kyuhas/catkin_ws/src/final_project/params/8403.dic"/>
+  </node>
+
+  <node name="pocketsphinx_gameCommands" pkg="final_project" type="pocketsphinx_gameCommands.py" />
+
+  <node name="kicker_collect" pkg="final_project" type="kicker_collect_ball" />
+
+
+</launch>

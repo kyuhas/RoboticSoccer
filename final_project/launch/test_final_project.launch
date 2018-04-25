@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<launch>
+
+    <node name="map_server_node" pkg="map_server" type="map_server" args="$(arg map_file)" />
+    <include file="$(find turtlebot_rviz_launchers)/launch/view_navigation.launch"/>
+        
+    <include file="$(find turtlebot_navigation)/launch/amcl_demo.launch">
+        <arg name="map_file" default="$(find final_project)/params/map.yaml"/>
+    </include>
+
+    <node name="kicker_collect" pkg="final_project" type="kicker_collect_ball" />
+</launch>

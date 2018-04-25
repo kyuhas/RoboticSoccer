@@ -1,0 +1,17 @@
+viewed from the kicker's perspective
+
+front right corner: 
+Position: -0.03, 1.197, 0.408
+Orientation: 0, 0, 0.99, 0.08
+
+back right corner:
+Position: 1.036, 1.3014, 0.4068
+Orientation:0, 0, 0.99 0.02
+
+front left corner:
+Position: -0.105, 3.03, 0.406
+Orientation: 0, 0, 0.999, -0.011
+
+back left corner:
+Position: 0.923, 3.04, 0.406
+Orientation: 0, 0, 1, -0.002
