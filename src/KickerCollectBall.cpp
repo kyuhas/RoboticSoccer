@@ -81,10 +81,10 @@ class KickerRobot
     KickerRobot() : imageTransport_(nodeHandle_)
     {
         // real camera
-        //imageSub_ = imageTransport_.subscribe("/usb_cam/image_raw", 10, &KickerRobot::playSoccer, this);
+        imageSub_ = imageTransport_.subscribe("/usb_cam/image_raw", 10, &KickerRobot::playSoccer, this);
 
         // camera used for simulation
-        imageSub_ = imageTransport_.subscribe("/camera/rgb/image_raw", 10, &KickerRobot::playSoccer, this);
+        //imageSub_ = imageTransport_.subscribe("/camera/rgb/image_raw", 10, &KickerRobot::playSoccer, this);
         imagePub_ = imageTransport_.advertise("/image_converter/output_video", 10);
 
         // initialize clock vars
@@ -241,8 +241,12 @@ class KickerRobot
             ROS_INFO("Going to get the red ball.");
         }
 
-        else if (hasRedBall() && isEmpty[BLUE])
-            lookAtGoal();
+        else if (hasRedBall() && isEmpty[BLUE]) {
+            //lookAtGoal();
+            ROS_INFO("Looking for dat blue ball, yo");
+	    twistMsg.linear.x = 0;
+	    twistMsg.angular.z = 0.2;
+	}
 
         /*
         // I don't think we should be doing this here. commenting out for now
@@ -316,15 +320,28 @@ class KickerRobot
     void trackBall(std::vector<cv::Vec3f> circleIMG, cv::Mat colorIMG, cv::Mat srcIMG, int color)
     {
         // if the image does not contain any of the color we are looking for, give that color a zero distance
-        if (isEmpty[color] = (circleIMG.empty() && cv::countNonZero(colorIMG) < 1))
+	isEmpty[color] = (circleIMG.empty() && colorIMG.empty());
+        if (isEmpty[color])
+	{
+	    ROS_INFO("isEmpty");
             objDist[color] = 0.0;
+	}
+
+	//has red ball bool to use in this method
+	bool hasRed = hasRedBall();
 
         // we will only consider what to do with blue ball if kicker has the red ball
-        if (!hasRedBall() && color == BLUE)
+        if (!hasRed && color == BLUE)
             return;
 
+	//debug
+	if (hasRed)
+	{
+		ROS_INFO("The ball is mine.");
+	}
+
         // if we don't have the red ball and the image does not contain red, rotate the TurtleBot until red ball is found
-        if (!hasRedBall() && isEmpty[RED])
+        if (!hasRed && isEmpty[RED])
             moveTurtleBot(true);
 
         else
@@ -451,8 +468,8 @@ class KickerRobot
             return;
         }
 
-        trackBall(blueCircleIMG, blueIMG, srcIMG, BLUE);
         trackBall(redCircleIMG, redIMG, srcIMG, RED);
+	trackBall(blueCircleIMG, blueIMG, srcIMG, BLUE);
 
         // Update GUI Window and publish modified stream
         cv::imshow(OPENCV_WINDOW, cvPtr->image);
