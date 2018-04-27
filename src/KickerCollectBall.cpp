@@ -20,7 +20,7 @@
 //constants used throughout the program
 #define RGB_FOCAL_LEN_MM 138.90625 // camera focal length in mm ... 525 pixels
 #define BALL_DIAM_MM 200.0         // 8" diameter ball in mm
-#define CAMERA_HEIGHT_MM 300.0     // height of camera off ground in mm
+#define CAMERA_HEIGHT_MM 195.0     // height of camera off ground in mm
 #define IMG_HEIGHT_PX 480.0        // in pixels
 #define IMG_WIDTH_PX 640.0         // in pixels
 #define MAX_BOT_VEL 0.65           // max speed TurtleBot is capable of
@@ -262,7 +262,7 @@ class KickerRobot
     void trackBall(std::vector<cv::Vec3f> circleIMG, cv::Mat colorIMG, cv::Mat srcIMG, int color)
     {
         // if the image does not contain any of the color we are looking for, give that color a zero distance
-	    isEmpty[color] = (circleIMG.empty() && colorIMG.empty());
+	isEmpty[color] = (circleIMG.empty());
         if (isEmpty[color])
             objDist[color] = 0.0;
 
@@ -301,7 +301,7 @@ class KickerRobot
                     moveTurtleBot();
 
                     // for easy debugging in Gazebo, please wait until final code is pushed to delete
-                    std::stringstream ssRedDist, ssBlueDist, ssBotVelX, ssAlignError, ssBotOrient, ssBotPosX, ssBotPosY, ssGoalDist;
+                    std::stringstream ssRedDist, ssBlueDist, ssBotVelX, ssAlignError, ssBotOrient, ssBotPosX, ssBotPosY, ssGoalDist, ssRad;
                     ssAlignError << alignErrorRed;
                     ssRedDist << objDist[RED];
                     ssBlueDist << objDist[BLUE];
@@ -310,6 +310,7 @@ class KickerRobot
                     ssBotPosX << kickerPos.position.x;
                     ssBotPosY << kickerPos.position.y;
                     ssGoalDist << distToGoalCenter();
+		    ssRad << objCoord[color][R];
 
                     std::string goalDistStr = "    DST2GOL: " + ssGoalDist.str() + " m";
                     std::string alignErrStr = "    ALN_ERR: " + ssAlignError.str() + " px";
@@ -319,6 +320,10 @@ class KickerRobot
                     std::string botPosXStr = "    POS__X: " + ssBotPosX.str();
                     std::string botPosYStr = "    POS__Y: " + ssBotPosY.str();
                     std::string botOrientStr = "    POS__W: " + ssBotOrient.str();
+
+		    std::string rad = "    RAD: " + ssRad.str();
+
+		    cv::putText(srcIMG, rad, cv::Point(350, 250), cv::FONT_HERSHEY_SIMPLEX, 0.5, blue, 1, CV_AA);
 
                     cv::putText(srcIMG, goalDistStr, cv::Point(350, 300), cv::FONT_HERSHEY_SIMPLEX, 0.5, blue, 1, CV_AA);
                     cv::putText(srcIMG, alignErrStr, cv::Point(350, 325), cv::FONT_HERSHEY_SIMPLEX, 0.5, blue, 1, CV_AA);
