@@ -230,16 +230,33 @@ class GoalieRobot {
 			// tune this value later
 			if (objDist[RED]) <= 1.5) 
 			{
+				// see which side the red ball is on
 				isBlocking = true;
 				bool onLeft = (objCoord[RED][X] <= 310);
-				if (objCoord[RED][X] <= 310)
-					isBlockingOnLeft = true;
-
-				else if (objCoord[RED][X] >= 330)
-					isBlockingOnLeft = false;
+				bool onRight = (objCoord[RED][X] >= 330);
 				
-				rotateGoalie(isBlockingOnLeft);
+				// if the red ball is approaching from left or right 
+				if (objCoord[RED][X] <= 310 || objCoord[RED][X] >= 330)
+				{
+					bool onLeft = (objCoord[RED][X] <= 310);
+					
+					// if goalie can move left
+					if (onLeft && goaliePos.position.x > goalUpperY - 0.5) 
+						rotateGoalie(true);
+					}
+					
+					// if goalie can move right
+					if (!onLeft && goaliePos.position.x < goalLowerY + 0.5) 
+						rotateGoalie(false);
+					}
+					
+				}
+				
+				else isBlocking = false;
 			}
+			
+			// if the red ball is further than 1.5 meters away, we are no longer blocking
+			isBlockng = false;
 			
 		}
 
