@@ -43,26 +43,27 @@ static std::vector<std::vector<int> > objCoords = {{0, 0, 0}, {0, 0, 0}}; // RED
 #define BLUE 1
 #define MIN_RADIUS 0
 #define MAX_RADIUS 0
+#define X 1
 
 static bool ballInRange, inGame, turningLeftNoBallFound, goalSet;
-static bool turningSide, turnBackToCenter, moveForward, isBlocking, blockingOnLeft;
+static bool turningSide, turnBackToCenter, moveForward, isBlocking, isBlockingOnLeft;
 
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
 class GoalieRobot {
-	ros::NodeHandle nodeHandle_;
-    image_transport::ImageTransport imageTransport_;
-    image_transport::Subscriber imageSub_;
-    image_transport::Publisher imagePub_;
-	ros::Subscriber gameSub_ = nodeHandle_.subscribe("/gameCommands", 10, &GoalieRobot::gameCommandCallback, this);
-	ros::Subscriber amclSub_ = nodeHandle_.subscribe("/amcl_pose", 10, &GoalieRobot::setPose, this);
-  	ros::Subscriber odomSub_ = nodeHandle_.subscribe("/odom", 1000, &GoalieRobot::odomCallback, this);
-	ros::Publisher velPub = nodeHandle_.advertise<geometry_msgs::Twist>("/cmd_vel_mux/input/teleop", 1);
-    geometry_msgs::Twist twistMsg;
-    geometry_msgs::Pose goaliePos;
+    	ros::NodeHandle nodeHandle_;
+    	image_transport::ImageTransport imageTransport_;
+    	image_transport::Subscriber imageSub_;
+    	image_transport::Publisher imagePub_;
+    	ros::Subscriber gameSub_ = nodeHandle_.subscribe("/gameCommands", 10, &GoalieRobot::gameCommandCallback, this);
+    	ros::Subscriber amclSub_ = nodeHandle_.subscribe("/amcl_pose", 10, &GoalieRobot::setPose, this);
+    	ros::Subscriber odomSub_ = nodeHandle_.subscribe("/odom", 1000, &GoalieRobot::odomCallback, this);
+    	ros::Publisher velPub = nodeHandle_.advertise<geometry_msgs::Twist>("/cmd_vel_mux/input/teleop", 1);
+    	geometry_msgs::Twist twistMsg;
+    	geometry_msgs::Pose goaliePos;
 	
-	ros::Subscriber mbcSub = nodeHandle_.subscribe("/move_base_controller_result", 10, &GoalieRobot::mbControllerResultCallback, this);
-	ros::Publisher mbcPub = nodeHandle_.advertise<move_base_msgs::MoveBaseGoal>("/goal_location", 1);
+    	ros::Subscriber mbcSub = nodeHandle_.subscribe("/move_base_controller_result", 10, &GoalieRobot::mbControllerResultCallback, this);
+    	ros::Publisher mbcPub = nodeHandle_.advertise<move_base_msgs::MoveBaseGoal>("/goal_location", 1);
 	
 	int moveForwardCount;
   	
@@ -85,6 +86,7 @@ class GoalieRobot {
 			turnBackToCenter = false;
 			moveForward = false;
 			isBlocking = false;
+			isBlockingOnLeft = false;
 			
 			moveForwardCount = 0;
 		}
@@ -92,17 +94,17 @@ class GoalieRobot {
 		~GoalieRobot() {}
 		
 		// method to find the distance the robot is from the ball
-        double distFromObj(int objSize){
-		    double distMeters = (((RGB_FOCAL_LEN_MM * BALL_DIAM_MM * IMG_HEIGHT_PX)/(objSize * CAMERA_HEIGHT_MM))/1000);
-		    return floor((distMeters*10 + 0.5))/10;
+        	double distFromObj(int objSize){
+			double distMeters = (((RGB_FOCAL_LEN_MM * BALL_DIAM_MM * IMG_HEIGHT_PX)/(objSize * CAMERA_HEIGHT_MM))/1000);
+		    	return floor((distMeters*10 + 0.5))/10;
 		}
 		
 		// if we have reached our goal, goalSet is now false
-    	void mbControllerResultCallback(const std_msgs::String::ConstPtr &msg)
-    	{
-        	if (goalSet && strcmp(msg->data.c_str(), "true") == 0)
-            	goalSet = false;
-    	}
+    		void mbControllerResultCallback(const std_msgs::String::ConstPtr &msg)
+    		{
+        		if (goalSet && strcmp(msg->data.c_str(), "true") == 0)
+            		goalSet = false;
+    		}
 		
 		// method to set the pose of the goalie robot. If out of goal bounds, move 
 		// to the center of the goal
@@ -123,17 +125,17 @@ class GoalieRobot {
 			{
 				// create rotate goal  
 				move_base_msgs::MoveBaseGoal goal;
-		    	goal.target_pose.header.frame_id = "base_link";
+		    		goal.target_pose.header.frame_id = "base_link";
   				goal.target_pose.header.stamp = ros::Time::now();
-  				goal.target_pose.pose.position.x = goaliePos.x;
-  				goal.target_pose.pose.position.y = goaliePos.y;
-				goal.target_pose.pose.position.z = goaliePos.z;
+  				goal.target_pose.pose.position.x = goaliePos.position.x;
+  				goal.target_pose.pose.position.y = goaliePos.position.y;
+				goal.target_pose.pose.position.z = goaliePos.position.z;
   				goal.target_pose.pose.orientation.z = 0.707;
-				goal.target_pose.pose.orientation.q = (rotateLeft)? -0.707 : 0.707;
+				goal.target_pose.pose.orientation.w = (rotateLeft)? -0.707 : 0.707;
 			
 				// publish rotate left goal
 				goalSet = true;
-            	mbcPub.publish(goal);
+            			mbcPub.publish(goal);
 				turningSide = true;
 				return;
 			}
@@ -159,16 +161,16 @@ class GoalieRobot {
 				
 				// create rotate back to center goal -- turn to pi radians 
 				move_base_msgs::MoveBaseGoal goal;
-		    	goal.target_pose.header.frame_id = "base_link";
+		    		goal.target_pose.header.frame_id = "base_link";
   				goal.target_pose.header.stamp = ros::Time::now();
-  				goal.target_pose.pose.position.x = goaliePos.x;
-  				goal.target_pose.pose.position.y = goaliePos.y;
-				goal.target_pose.pose.position.z = goaliePos.z;
+  				goal.target_pose.pose.position.x = goaliePos.position.x;
+  				goal.target_pose.pose.position.y = goaliePos.position.y;
+				goal.target_pose.pose.position.z = goaliePos.position.z;
   				goal.target_pose.pose.orientation.z = 1;
 			
 				// publish rotate to center goal
 				goalSet = true;
-            	mbcPub.publish(goal);
+            			mbcPub.publish(goal);
 				return;
 			}
 			
@@ -180,75 +182,28 @@ class GoalieRobot {
 			}
 		}
 
-
 		// method to have the robot move so that it can see the ball
 		void moveTurtleBot(bool ballNotFound = false)
 		{
 		
-			// TODO: possibly prevent the robot from rotating at all until ball is close
-			/*
-			// if the goalie has not yet found the ball
-            if (ballNotFound){
-            	// if the goalie has turned too far in one direction
-            	// if the robot is looking to its left, quat.w will be negative. 
-            	// if the robot is looking to its right, quat.w will be positive.
-            	if(goaliePos.orientation.w < -0.38) {
-            		twistMsg.angular.z = 0.1;
-            		turningLeftNoBallFound = false;
-            	}
-            	else if (goaliePos.orientation.w > 0.38) {
-            		twistMsg.angular.z = -0.1;
-            		turningLeftNoBallFound = true;
-            	}
-            		
-            	else {
-            		// if the robot is currently turning left
-            		if (turningLeftNoBallFound) twistMsg.angular.z = -0.1;
-            				
-            		else twistMsg.angular.z = 0.1;
-        		}
-
-            	twistMsg.linear.x = 0.0;
-                velPub.publish(twistMsg);
-                return;
-           	}
-
-			// the red ball has been found!
-            
-            //TODO: center the ball
-
-			// once centered, determine if the ball if going left or right
-
-			if (ballIsGoingLeft(objDist[RED])) {
-				// TODO: if the robot can move left, move it left
-			}
-			else {
-				// TODO: if the robot can move right, move it right
-			}
-			*/
-			
 			// tune this value later
-			if (objDist[RED]) <= 1.5) 
+			if (objDist[RED] <= 1.5) 
 			{
 				// see which side the red ball is on
 				isBlocking = true;
-				bool onLeft = (objCoord[RED][X] <= 310);
-				bool onRight = (objCoord[RED][X] >= 330);
-				
+
 				// if the red ball is approaching from left or right 
-				if (objCoord[RED][X] <= 310 || objCoord[RED][X] >= 330)
+				if (objCoords[RED][X] <= 310 || objCoords[RED][X] >= 330)
 				{
-					bool onLeft = (objCoord[RED][X] <= 310);
+					isBlockingOnLeft = (objCoords[RED][X] <= 310);
 					
 					// if goalie can move left
-					if (onLeft && goaliePos.position.x > goalUpperY - 0.5) 
+					if (isBlockingOnLeft && goaliePos.position.x > goalUpperY - 0.5) 
 						rotateGoalie(true);
-					}
 					
 					// if goalie can move right
-					if (!onLeft && goaliePos.position.x < goalLowerY + 0.5) 
+					if (!isBlockingOnLeft && goaliePos.position.x < goalLowerY + 0.5) 
 						rotateGoalie(false);
-					}
 					
 				}
 				
@@ -256,7 +211,7 @@ class GoalieRobot {
 			}
 			
 			// if the red ball is further than 1.5 meters away, we are no longer blocking
-			isBlockng = false;
+			isBlocking = false;
 			
 		}
 
@@ -268,15 +223,15 @@ class GoalieRobot {
 
 
 		//the ball is getting close to the goal
-        bool redBallApproaching(int radius){
-            return (radius > 30);
+        	bool redBallApproaching(int radius){
+            		return (radius > 30);
 		}
 
 		bool redIsEmpty(){
-        	return objDist[RED] == 0.0;
-    	}
+        		return objDist[RED] == 0.0;
+    		}
 
-	    void trackBall(std::vector<cv::Vec3f> circleIMG, cv::Mat srcIMG){
+	   	 void trackBall(std::vector<cv::Vec3f> circleIMG, cv::Mat srcIMG){
 
 			if (isBlocking)
 			{
@@ -290,9 +245,9 @@ class GoalieRobot {
 				moveTurtleBot(true);
 			}
 
-		    else for (size_t i = 0; i < circleIMG.size(); i++){
+		    	else for (size_t i = 0; i < circleIMG.size(); i++){
 				// center coordinates of circle, and the radius
-			    xCoord = static_cast<int>(round(circleIMG[i][0]));
+			    	xCoord = static_cast<int>(round(circleIMG[i][0]));
 				yCoord = static_cast<int>(round(circleIMG[i][1]));
 				radius = static_cast<int>(round(circleIMG[i][2]));
 
@@ -316,101 +271,101 @@ class GoalieRobot {
 				
 				// move the turtlebot
 				moveTurtleBot();
+	    		}
 	    	}
-	    }
 
 		//method to have the robot search for the ball and move toward it
 		void searchForBall(const sensor_msgs::ImageConstPtr& msg) {
 			
 			ROS_INFO("In search for ball");
 			
-            cv_bridge::CvImagePtr cvPtr;
-            std::vector<cv::Vec3f> circleIMG;
-            cv::Mat srcIMG, hsvIMG, redIMG_lower, redIMG_upper, redIMG;
+            		cv_bridge::CvImagePtr cvPtr;
+            		std::vector<cv::Vec3f> circleIMG;
+            		cv::Mat srcIMG, hsvIMG, redIMG_lower, redIMG_upper, redIMG;
 			std::vector<cv::Vec3f> redCircleIMG;
 
-            try {
-                cvPtr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
-        		srcIMG = cvPtr->image;
+            		try {
+                		cvPtr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
+        			srcIMG = cvPtr->image;
 
-                // converting color to HSV
-                cv::cvtColor(srcIMG, hsvIMG, CV_BGR2HSV);
+                		// converting color to HSV
+                		cv::cvtColor(srcIMG, hsvIMG, CV_BGR2HSV);
 
-                // defining upper and lower red color range
-                cv::inRange(hsvIMG, cv::Scalar(0, 100, 100), cv::Scalar(20, 255, 255), redIMG_lower);
-                cv::inRange(hsvIMG, cv::Scalar(160, 100, 100), cv::Scalar(170, 255, 255), redIMG_upper);
+                		// defining upper and lower red color range
+                		cv::inRange(hsvIMG, cv::Scalar(0, 100, 100), cv::Scalar(20, 255, 255), redIMG_lower);
+                		cv::inRange(hsvIMG, cv::Scalar(160, 100, 100), cv::Scalar(170, 255, 255), redIMG_upper);
 
-                // weighting image and performing blur to reduce noise in image
-                cv::addWeighted(redIMG_lower, 1.0, redIMG_upper, 1.0, 0.0, redIMG);
-                cv::GaussianBlur(redIMG, redIMG, cv::Size(9, 9), 2, 2);
+                		// weighting image and performing blur to reduce noise in image
+                		cv::addWeighted(redIMG_lower, 1.0, redIMG_upper, 1.0, 0.0, redIMG);
+                		cv::GaussianBlur(redIMG, redIMG, cv::Size(9, 9), 2, 2);
 
-                // Hough gradient transform to find circles
-                cv::HoughCircles(redIMG, redCircleIMG, CV_HOUGH_GRADIENT, 1, hsvIMG.rows / 8, 100, 20, MIN_RADIUS, MAX_RADIUS);
-            }
+                		// Hough gradient transform to find circles
+                		cv::HoughCircles(redIMG, redCircleIMG, CV_HOUGH_GRADIENT, 1, hsvIMG.rows / 8, 100, 20, MIN_RADIUS, MAX_RADIUS);
+            		}
 
-            catch (cv_bridge::Exception &exception) {
-                ROS_ERROR("cv_bridge exception: %s", exception.what());
-                return;
-            }
+            		catch (cv_bridge::Exception &exception) {
+                		ROS_ERROR("cv_bridge exception: %s", exception.what());
+                		return;
+            		}
 
-            trackBall(redCircleIMG, srcIMG);
+            		trackBall(redCircleIMG, srcIMG);
 
 			// Update GUI Window
 			cv::imshow(OPENCV_WINDOW, cvPtr->image);
 			cv::waitKey(3);
 			// Output modified video stream1
 			imagePub_.publish(cvPtr->toImageMsg());
-        }
+        	}
 
         	//method to send the ball to a specific location
-        void moveToLocation(move_base_msgs::MoveBaseGoal goal) {
-		    MoveBaseClient ac("move_base", true);
+        	void moveToLocation(move_base_msgs::MoveBaseGoal goal) {
+		    	MoveBaseClient ac("move_base", true);
 
-		    //wait for the action server to come up
-            while (!ac.waitForServer(ros::Duration(5.0)))
-        	    ROS_INFO("Waiting for the move_base action server to come up");
+		    	//wait for the action server to come up
+            		while (!ac.waitForServer(ros::Duration(5.0)))
+        	    	ROS_INFO("Waiting for the move_base action server to come up");
 
-        	ROS_INFO("Sending goal");
+        		ROS_INFO("Sending goal");
 
-            ac.sendGoal(goal);
-            ac.waitForResult();
+            		ac.sendGoal(goal);
+            		ac.waitForResult();
 
-            if (ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) ROS_INFO("Success");
+            		if (ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) ROS_INFO("Success");
 
-            else ROS_INFO("Unable to move");
+            		else ROS_INFO("Unable to move");
 		}	
 
 		move_base_msgs::MoveBaseGoal getStartingLocation() {
-		    move_base_msgs::MoveBaseGoal startingLocation;
-		    startingLocation.target_pose.header.frame_id = "base_link";
+		    	move_base_msgs::MoveBaseGoal startingLocation;
+		    	startingLocation.target_pose.header.frame_id = "base_link";
   			startingLocation.target_pose.header.stamp = ros::Time::now();
   			startingLocation.target_pose.pose.position.x = (goalLowerX + goalUpperX)/2.0;
   			startingLocation.target_pose.pose.position.y = 1.0;
-			startingLocation.target_pose.pose.position.z = kickerPos.z;
+			startingLocation.target_pose.pose.position.z = goaliePos.position.z;
   			startingLocation.target_pose.pose.orientation.z = 1;
-            return startingLocation;
+            		return startingLocation;
 		}
 
 		//method where the robot decides which action to take (try to block goal or search for ball)
-        void playSoccer(const sensor_msgs::ImageConstPtr &msg) {
+        	void playSoccer(const sensor_msgs::ImageConstPtr &msg) {
 
 			ROS_INFO("In play soccer method");
 			searchForBall(msg);
 
 			/*
-		    if (!inGame) return;
+		    	if (!inGame) return;
 
 			else if (!ballInRange) searchForBall(msg);
 
-		    else {
-		        //TODO: try to block the goal 
+		    	else {
+		        	//TODO: try to block the goal 
 				// may be able to just do this in the track ball method
-		    }
+		    	}
 			*/
 		}
         	//method to handle game commands
-        void gameCommandCallback(const std_msgs::String::ConstPtr &msg) {
-		    //inGame = false;
+       		void gameCommandCallback(const std_msgs::String::ConstPtr &msg) {
+		    	//inGame = false;
 
 			ROS_INFO("In GC callback");
 			//inGame = true;
@@ -418,15 +373,15 @@ class GoalieRobot {
 			/*
 			if (strcmp(msg->data.c_str(), "start") == 0) inGame = true;
 
-		    else if (strcmp(msg->data.c_str(), "stop") == 0) {
-		    	twistMsg.linear.x = 0;
-		    	twistMsg.angular.z = 0;
+		    	else if (strcmp(msg->data.c_str(), "stop") == 0) {
+		    		twistMsg.linear.x = 0;
+		    		twistMsg.angular.z = 0;
 				velPub.publish(twistMsg);
-	    	}
+	    		}
 		    
-		    else if (strcmp(msg->data.c_str(), "field") == 0) {
-		    	//publish command to go to the field
-        		moveToLocation(getStartingLocation());
+		    	else if (strcmp(msg->data.c_str(), "field") == 0) {
+		    		//publish command to go to the field
+        			moveToLocation(getStartingLocation());
 			}
 
 			*/
@@ -440,7 +395,7 @@ int main(int argc, char** argv){
     GoalieRobot goalie;
     ros::spin();
    	
-	return 0;
+    return 0;
 }
 
 
