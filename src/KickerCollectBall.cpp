@@ -122,7 +122,7 @@ class KickerRobot
     {
         kickerPos = msg->pose.pose;
 
-        if (kickerPos.position.y > goalUpperY + 1.0)
+        if (kickerPos.position.y < goalUpperX + 1.0)
         {
             twistMsg.linear.x = -0.5;
             velPub.publish(twistMsg);
