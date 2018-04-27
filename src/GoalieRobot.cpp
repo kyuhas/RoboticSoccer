@@ -11,7 +11,6 @@
 #include <sstream>
 #include <string.h>
 #include <move_base_msgs/MoveBaseAction.h>
-#include <actionlib/client/simple_action_client.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <geometry_msgs/Quaternion.h>
 #include <cmath>
@@ -44,11 +43,10 @@ static std::vector<std::vector<int> > objCoords = {{0, 0, 0}, {0, 0, 0}}; // RED
 #define MIN_RADIUS 0
 #define MAX_RADIUS 0
 #define X 1
+#define MID_X_LOW 310
+#define MID_X_HIGH 330
 
-static bool inGame, goalSet;
-static bool turningSide, turnBackToCenter, moveForward, isBlocking, isBlockingOnLeft;
-
-typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
+bool inGame, goalSet, turningSide, turnBackToCenter, moveForward, isBlocking, isBlockingOnLeft;
 
 class GoalieRobot {
     	ros::NodeHandle nodeHandle_;
@@ -121,6 +119,8 @@ class GoalieRobot {
 			// if you have not yet turned left
 			if (!turningSide)
 			{
+				turningSide = true;
+
 				// create rotate goal  
 				move_base_msgs::MoveBaseGoal goal;
 		    		goal.target_pose.header.frame_id = "base_link";
@@ -129,12 +129,10 @@ class GoalieRobot {
   				goal.target_pose.pose.position.y = goaliePos.position.y;
 				goal.target_pose.pose.position.z = goaliePos.position.z;
   				goal.target_pose.pose.orientation.z = 0.707;
-				goal.target_pose.pose.orientation.w = (rotateLeft)? -0.707 : 0.707;
+				goal.target_pose.pose.orientation.w = (rotateLeft) ? -0.707 : 0.707;
 			
-				// publish rotate left goal
-				goalSet = true;
-            			mbcPub.publish(goal);
-				turningSide = true;
+				// publish rotate goal
+				moveToLocation(goal);
 				return;
 			}
 			
@@ -151,10 +149,6 @@ class GoalieRobot {
 			
 			// if we have finished moving forward
 			if (moveForward) {
-				turningSide = false;
-				moveForward = false;
-				moveForwardCount = 0;
-				
 				turnBackToCenter = true;
 				
 				// create rotate back to center goal -- turn to pi radians 
@@ -167,8 +161,8 @@ class GoalieRobot {
   				goal.target_pose.pose.orientation.z = 1;
 			
 				// publish rotate to center goal
-				goalSet = true;
-            			mbcPub.publish(goal);
+				moveToLocation(goal);
+				moveForward = false;
 				return;
 			}
 			
@@ -176,6 +170,12 @@ class GoalieRobot {
 			if (!goalSet && turnBackToCenter)
 			{
 				turnBackToCenter = false;
+				turningSide = false;
+				moveForward = false;
+				moveForwardCount = 0;
+				
+				//at this point, we should no longer be blocking but test in simulation before uncommenting
+				// isBlocking = false;
 				return;
 			}
 		}
@@ -191,9 +191,9 @@ class GoalieRobot {
 				isBlocking = true;
 
 				// if the red ball is approaching from left or right 
-				if (objCoords[RED][X] <= 310 || objCoords[RED][X] >= 330)
+				if (objCoords[RED][X] <= MID_X_LOW || objCoords[RED][X] >= MID_X_HIGH)
 				{
-					isBlockingOnLeft = (objCoords[RED][X] <= 310);
+					isBlockingOnLeft = (objCoords[RED][X] <= MID_X_LOW);
 					
 					// if goalie can move left
 					if (isBlockingOnLeft && goaliePos.position.x > goalUpperY - 0.5) 
@@ -229,7 +229,7 @@ class GoalieRobot {
         		return objDist[RED] == 0.0;
     		}
 
-	   	 void trackBall(std::vector<cv::Vec3f> circleIMG, cv::Mat srcIMG)
+	   	void trackBall(std::vector<cv::Vec3f> circleIMG, cv::Mat srcIMG)
 		{
 			if (isBlocking)
 			{

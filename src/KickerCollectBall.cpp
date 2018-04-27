@@ -13,7 +13,6 @@
 #include <sstream>
 #include <string.h>
 #include <move_base_msgs/MoveBaseAction.h>
-#include <actionlib/client/simple_action_client.h>
 #include <time.h>
 #include <math.h>
 #include <limits>
@@ -33,8 +32,8 @@
 #define R 2
 #define MIN_RADIUS 0
 #define MAX_RADIUS 0
-#define MID_X_LOW = 310;
-#define MID_X_HIGH = 330;
+#define MID_X_LOW 310
+#define MID_X_HIGH 330
 
 // constant time for how frequently to check if the ball is still there
 const int NUM_SECONDS = 5;
@@ -54,8 +53,6 @@ static std::vector<double> objDist = {0.0, 0.0};                        // RED, 
 static std::vector<std::vector<int>> objCoord = {{0, 0, 0}, {0, 0, 0}}; // RED, BLUE, in that order
 static std::vector<bool> isEmpty = {false, false};                      // RED, BLUE, in that order
 static bool isKickingBall, inGame, goalSet;
-
-typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
 class KickerRobot
 {
