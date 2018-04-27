@@ -43,8 +43,8 @@ static std::vector<std::vector<int> > objCoords = {{0, 0, 0}, {0, 0, 0}}; // RED
 #define MIN_RADIUS 0
 #define MAX_RADIUS 0
 #define X 1
-#define MID_X_LOW 310;
-#define MID_X_HIGH 330;
+#define MID_X_LOW 310
+#define MID_X_HIGH 330
 
 bool inGame, goalSet, turningSide, turnBackToCenter, moveForward, isBlocking, isBlockingOnLeft;
 

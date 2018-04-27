@@ -46,7 +46,7 @@ static std::vector<std::vector<int> > objCoords = {{0, 0, 0}, {0, 0, 0}}; // RED
 #define MID_X_LOW 310
 #define MID_X_HIGH 330
 
-bool inGame, goalSet, turningSide, turnBackToCenter, moveForward, isBlocking, isBlockingOnLeft;
+bool inGame, goalSet, haveTurnedToSide, haveTurnedBackToCenter, haveMovedForward, isBlocking, isBlockingOnLeft;
 
 class GoalieRobot {
     	ros::NodeHandle nodeHandle_;
@@ -63,7 +63,7 @@ class GoalieRobot {
     	ros::Subscriber mbcSub = nodeHandle_.subscribe("/move_base_controller_result", 10, &GoalieRobot::mbControllerResultCallback, this);
     	ros::Publisher mbcPub = nodeHandle_.advertise<move_base_msgs::MoveBaseGoal>("/goal_location", 1);
 	
-	int moveForwardCount;
+	int haveMovedForwardCount;
   	
 	public:
 		//constructor
@@ -78,13 +78,13 @@ class GoalieRobot {
 			//initialize bools
 			inGame = false;
 			goalSet = false;
-			turningSide = false;
-			turnBackToCenter = false;
-			moveForward = false;
+			haveTurnedToSide = false;
+			haveTurnedBackToCenter = false;
+			haveMovedForward = false;
 			isBlocking = false;
 			isBlockingOnLeft = false;
 			
-			moveForwardCount = 0;
+			haveMovedForwardCount = 0;
 		}
 		//destructor
 		~GoalieRobot() {}
@@ -116,10 +116,10 @@ class GoalieRobot {
 		void rotateGoalie(bool rotateLeft = false) 
 		{
 		
-			// if you have not yet turned left
-			if (!turningSide)
+			// if you have not yet turned to the side
+			if (!haveTurnedToSide)
 			{
-				turningSide = true;
+				haveTurnedToSide = true;
 
 				// create rotate goal  
 				move_base_msgs::MoveBaseGoal goal;
@@ -136,20 +136,20 @@ class GoalieRobot {
 				return;
 			}
 			
-			// if the turn left goal has finished and we have not yet moved forward three times
-			if (!goalSet && turningSide && moveForwardCount < 3) 
+			// if the turn goal has finished and we have not yet moved forward three times
+			if (!goalSet && haveTurnedToSide && haveMovedForwardCount < 3) 
 			{
-				moveForward = true;
+				haveMovedForward = true;
 				twistMsg.angular.z = 0;
 				twistMsg.linear.z = 0.5;
 				velPub.publish(twistMsg);
-				moveForwardCount++;
+				haveMovedForwardCount++;
 				return;
 			}
 			
 			// if we have finished moving forward
-			if (moveForward) {
-				turnBackToCenter = true;
+			if (haveMovedForward) {
+				haveTurnedBackToCenter = true;
 				
 				// create rotate back to center goal -- turn to pi radians 
 				move_base_msgs::MoveBaseGoal goal;
@@ -162,17 +162,18 @@ class GoalieRobot {
 			
 				// publish rotate to center goal
 				moveToLocation(goal);
-				moveForward = false;
+				haveMovedForward = false;
 				return;
 			}
 			
 			// if we have finished turning back to center
-			if (!goalSet && turnBackToCenter)
+			if (!goalSet && haveTurnedBackToCenter)
 			{
-				turnBackToCenter = false;
-				turningSide = false;
-				moveForward = false;
-				moveForwardCount = 0;
+				// reset all of the booleans and count
+				haveTurnedBackToCenter = false;
+				haveTurnedToSide = false;
+				haveMovedForward = false;
+				haveMovedForwardCount = 0;
 				
 				//at this point, we should no longer be blocking but test in simulation before uncommenting
 				// isBlocking = false;
