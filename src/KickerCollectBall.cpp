@@ -124,8 +124,8 @@ class KickerRobot
 
         if (kickerPos.position.y < goalUpperX + 1.0)
         {
-            twistMsg.linear.x = -0.5;
-            velPub.publish(twistMsg);
+            //twistMsg.linear.x = -0.5;
+            //velPub.publish(twistMsg);
         }
     }
 
