@@ -319,20 +319,8 @@ class GoalieRobot {
 
         	//method to send the ball to a specific location
         	void moveToLocation(move_base_msgs::MoveBaseGoal goal) {
-		    	MoveBaseClient ac("move_base", true);
-
-		    	//wait for the action server to come up
-            		while (!ac.waitForServer(ros::Duration(5.0)))
-        	    	ROS_INFO("Waiting for the move_base action server to come up");
-
-        		ROS_INFO("Sending goal");
-
-            		ac.sendGoal(goal);
-            		ac.waitForResult();
-
-            		if (ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) ROS_INFO("Success");
-
-            		else ROS_INFO("Unable to move");
+		    	goalSet = true;
+        		mbcPub.publish(goal);
 		}	
 
 		move_base_msgs::MoveBaseGoal getStartingLocation() {
