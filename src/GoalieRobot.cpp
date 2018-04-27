@@ -45,7 +45,7 @@ static std::vector<std::vector<int> > objCoords = {{0, 0, 0}, {0, 0, 0}}; // RED
 #define MAX_RADIUS 0
 #define X 1
 
-static bool ballInRange, inGame, turningLeftNoBallFound, goalSet;
+static bool inGame, goalSet;
 static bool turningSide, turnBackToCenter, moveForward, isBlocking, isBlockingOnLeft;
 
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
@@ -79,8 +79,6 @@ class GoalieRobot {
 			
 			//initialize bools
 			inGame = false;
-			ballInRange = false;
-			turningLeftNoBallFound = false;
 			goalSet = false;
 			turningSide = false;
 			turnBackToCenter = false;
@@ -231,8 +229,8 @@ class GoalieRobot {
         		return objDist[RED] == 0.0;
     		}
 
-	   	 void trackBall(std::vector<cv::Vec3f> circleIMG, cv::Mat srcIMG){
-
+	   	 void trackBall(std::vector<cv::Vec3f> circleIMG, cv::Mat srcIMG)
+		{
 			if (isBlocking)
 			{
 				rotateGoalie(isBlockingOnLeft);
@@ -262,12 +260,6 @@ class GoalieRobot {
 				cv::line(srcIMG, center, center, black, 2);
 
 				objDist[RED] = distFromObj(radius);
-
-				// determine if ball is in range of goal
-				//ballInRange = redBallApproaching(radius);
-				
-				// TODO: maybe do something with this to center the ball?
-				//if(ballInRange) redBallCenter = center;
 				
 				// move the turtlebot
 				moveTurtleBot();
@@ -343,12 +335,7 @@ class GoalieRobot {
 			/*
 		    	if (!inGame) return;
 
-			else if (!ballInRange) searchForBall(msg);
-
-		    	else {
-		        	//TODO: try to block the goal 
-				// may be able to just do this in the track ball method
-		    	}
+			searchForBall(msg);
 			*/
 		}
         	//method to handle game commands

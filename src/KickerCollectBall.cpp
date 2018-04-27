@@ -53,7 +53,7 @@ cv::Scalar black = (0, 255, 5), blue = (200, 200, 250);                 // RGB c
 static std::vector<double> objDist = {0.0, 0.0};                        // RED, BLUE in that order
 static std::vector<std::vector<int>> objCoord = {{0, 0, 0}, {0, 0, 0}}; // RED, BLUE, in that order
 static std::vector<bool> isEmpty = {false, false};                      // RED, BLUE, in that order
-static bool inFrontOfGoal, isKickingBall, inGame, goalSet;
+static bool isKickingBall, inGame, goalSet;
 
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
@@ -99,7 +99,6 @@ class KickerRobot
 
         // initialize booleans because C++ does not do this for us
         isKickingBall = false;
-        inFrontOfGoal = false;
         //inGame = false;
         goalSet = false;
     }
@@ -229,8 +228,7 @@ class KickerRobot
             if (objDist[BLUE] > 2.5)
                 twistMsg.linear.x = 0.3 * objDist[BLUE];
 
-            else
-                kickBall();
+            else kickBall();
         }
         
 
@@ -271,8 +269,8 @@ class KickerRobot
         if (isEmpty[color])
             objDist[color] = 0.0;
 
-	    //has red ball bool to use in this method
-	    bool hasRed = hasRedBall();
+	//has red ball bool to use in this method
+	bool hasRed = hasRedBall();
 
         // we will only consider what to do with blue ball if kicker has the red ball
         if (!hasRed && color == BLUE)
@@ -397,7 +395,7 @@ class KickerRobot
         }
 
         trackBall(redCircleIMG, redIMG, srcIMG, RED);
-	    trackBall(blueCircleIMG, blueIMG, srcIMG, BLUE);
+	trackBall(blueCircleIMG, blueIMG, srcIMG, BLUE);
 
         // Update GUI Window and publish modified stream
         cv::imshow(OPENCV_WINDOW, cvPtr->image);
@@ -419,8 +417,7 @@ class KickerRobot
         return startingLocation;
     }
 
-    // method to get the kick location of the kicker
-    //TODO: we should figure out how many different kick positions it should have
+    //TODO: possibly remove this method if we are just going based off of twistMsgs
     move_base_msgs::MoveBaseGoal getKickLocation()
     {
         move_base_msgs::MoveBaseGoal kickLoc;
@@ -435,10 +432,9 @@ class KickerRobot
     // method where the robot decides which action to take (try to make goal or search for ball)
     void playSoccer(const sensor_msgs::ImageConstPtr &msg)
     {
-		if (!inGame)
-			return;
+	if (!inGame)
+		return;
 
-        // I greatly simplified this since our trackBall method takes care of everything this method previously did
         searchForBall(msg);
 
     }
