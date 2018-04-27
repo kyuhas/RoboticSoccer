@@ -61,7 +61,7 @@ class GoalieRobot {
     geometry_msgs::Twist twistMsg;
     geometry_msgs::Pose goaliePos;
 	
-	ros::Subscriber mbcSub = nodeHandle_.subscribe("/move_base_controller_result", 10, &KickerRobot::mbControllerResultCallback, this);
+	ros::Subscriber mbcSub = nodeHandle_.subscribe("/move_base_controller_result", 10, &GoalieRobot::mbControllerResultCallback, this);
 	ros::Publisher mbcPub = nodeHandle_.advertise<move_base_msgs::MoveBaseGoal>("/goal_location", 1);
 	
 	int moveForwardCount;
