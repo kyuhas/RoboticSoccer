@@ -102,7 +102,7 @@ class GoalieRobot {
     		void mbControllerResultCallback(const std_msgs::String::ConstPtr &msg)
     		{
         		if (goalSet && strcmp(msg->data.c_str(), "true") == 0)
-            		goalSet = false;
+            			goalSet = false;
     		}
 		
 		// method to set the pose of the goalie robot. If out of goal bounds, move 
@@ -122,6 +122,7 @@ class GoalieRobot {
 			// if you have not yet turned to the side
 			if (!haveTurnedToSide)
 			{
+				ROS_INFO("Turning to side.");
 				haveTurnedToSide = true;
 
 				// create rotate goal  
@@ -142,6 +143,7 @@ class GoalieRobot {
 			// if the turn goal has finished and we have not yet moved forward three times
 			if (!goalSet && haveTurnedToSide && haveMovedForwardCount < 3) 
 			{
+				ROS_INFO("moving forward three times.");
 				haveMovedForward = true;
 				twistMsg.angular.z = 0;
 				twistMsg.linear.z = 0.5;
@@ -152,6 +154,7 @@ class GoalieRobot {
 			
 			// if we have finished moving forward
 			if (haveMovedForward) {
+				ROS_INFO("turning back to center");
 				haveTurnedBackToCenter = true;
 				
 				// create rotate back to center goal -- turn to pi radians 
@@ -172,6 +175,7 @@ class GoalieRobot {
 			// if we have finished turning back to center
 			if (!goalSet && haveTurnedBackToCenter)
 			{
+				ROS_INFO("done rotating");
 				// reset all of the booleans and count
 				haveTurnedBackToCenter = false;
 				haveTurnedToSide = false;
