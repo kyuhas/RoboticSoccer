@@ -174,25 +174,17 @@ class GoalieRobot {
 			// if the turn goal has finished and we have not yet moved forward three times
 			if (haveTurnedToSide) 
 			{
-				ROS_INFO("moving forward .");
+				ROS_INFO("moving forward.");
 				if (haveMovedForwardCount == 0) 
 				{
 					if (rotateLeft) 
-						expectedLocation = 1.7;
+						expectedLocation = goaliePos.position.y - 0.5;
 					else
-						expectedLocation = 2.7;
+						expectedLocation = goaliePos.position.y + 0.5;
 				}
 
-				bool madeIt = false;
 
-				if (rotateLeft)
-					if (goaliePos.position.y <= expectedLocation)
-						madeIt = true;
-				else
-					if (goaliePos.position.y >= expectedLocation)
-						madeIt = true;
-
-				if (madeIt)
+				if ((rotateLeft && goaliePos.position.y <= expectedLocation) || (!rotateLeft && goaliePos.position.y >= expectedLocation))
 				{
 					twistMsg.linear.x = 0;
 					twistMsg.angular.z = 0;
