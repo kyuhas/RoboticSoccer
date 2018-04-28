@@ -43,8 +43,8 @@ static std::vector<std::vector<int> > objCoords = {{0, 0, 0}, {0, 0, 0}}; // RED
 #define MIN_RADIUS 0
 #define MAX_RADIUS 0
 #define X 1
-#define MID_X_LOW 310
-#define MID_X_HIGH 330
+#define MID_X_LOW 290
+#define MID_X_HIGH 360
 
 bool inGame, goalSet, haveTurnedToSide, haveTurnedBackToCenter, haveMovedForward, isBlocking, isBlockingOnLeft;
 
@@ -76,7 +76,8 @@ class GoalieRobot {
 			imagePub_ = imageTransport_.advertise("/image_converter/output_video", 10);
 			
 			//initialize bools
-			inGame = false;
+			//inGame = false;
+			inGame = true;
 			goalSet = false;
 			haveTurnedToSide = false;
 			haveTurnedBackToCenter = false;
@@ -182,11 +183,10 @@ class GoalieRobot {
 		}
 
 		// method to have the robot move so that it can see the ball
-		void moveTurtleBot(bool ballNotFound = false)
+		void moveTurtleBot()
 		{
-		
 			// tune this value later
-			if (objDist[RED] <= 1.5) 
+			if (objDist[RED] <= 1.5 && objDist[RED] > 0.0) //make sure it isn't counting empty images  
 			{
 				// see which side the red ball is on
 				isBlocking = true;
@@ -239,10 +239,8 @@ class GoalieRobot {
 			}
 
 
-			if (circleIMG.empty()){
+			if (circleIMG.empty())
 				objDist[RED] = 0.0;
-				moveTurtleBot(true);
-			}
 
 		    	else for (size_t i = 0; i < circleIMG.size(); i++){
 				// center coordinates of circle, and the radius
@@ -331,13 +329,9 @@ class GoalieRobot {
         	void playSoccer(const sensor_msgs::ImageConstPtr &msg) {
 
 			ROS_INFO("In play soccer method");
-			searchForBall(msg);
-
-			/*
 		    	if (!inGame) return;
 
 			searchForBall(msg);
-			*/
 		}
         	//method to handle game commands
        		void gameCommandCallback(const std_msgs::String::ConstPtr &msg) {
