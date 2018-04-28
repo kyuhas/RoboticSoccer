@@ -126,10 +126,11 @@ class KickerRobot
         ROS_INFO("Getting AMCL pose callback");
         kickerPos = msg->pose.pose;
 
-        if (kickerPos.position.y < goalUpperX + 1.0)
+        if (kickerPos.position.x < goalUpperX + 1.0)
         {
-            twistMsg.linear.x = -0.5;
-            velPub.publish(twistMsg);
+	    // comment out for debugging purposes
+            //twistMsg.linear.x = -0.5;
+            //velPub.publish(twistMsg);
         }
     }
 
@@ -228,7 +229,7 @@ class KickerRobot
 
         else if (hasRedBall && !isEmpty[BLUE])
         {
-            ROS_INFO("I have the red ball and cannot see the goal");
+            ROS_INFO("I have the red ball and can see the goal");
             // if you are far away from the goal, move toward it. otherwise, try to kick the ball
             if (objDist[BLUE] > 2.5)
                 twistMsg.linear.x = 0.3 * objDist[BLUE];
