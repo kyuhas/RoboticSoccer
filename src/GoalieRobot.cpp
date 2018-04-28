@@ -172,7 +172,7 @@ class GoalieRobot {
 			}
 			
 			// if the turn goal has finished and we have not yet moved forward three times
-			if (haveTurnedToSide) 
+			if (haveTurnedToSide && !haveMovedForward) 
 			{
 				ROS_INFO("moving forward.");
 				if (haveMovedForwardCount == 0) 
@@ -190,7 +190,7 @@ class GoalieRobot {
 					twistMsg.angular.z = 0;
 					velPub.publish(twistMsg);
 					haveMovedForward = true;
-					haveTurnedToSide = false;
+					//haveTurnedToSide = false;
 				}
 				
 				else 
@@ -205,20 +205,19 @@ class GoalieRobot {
 			}
 			
 			// if we have finished moving forward
-			if (haveMovedForward) {
+			if (haveMovedForward && !haveTurnedBackToCenter) {
 				ROS_INFO("turning back to center");
-				if (goaliePos.orientation.z <= HIGH_STRAIGHT_ANGLE_Z)
+				if (goaliePos.orientation.w <= 0.1)
 				{
 					twistMsg.angular.z = 0;
 					twistMsg.linear.x = 0;
 					velPub.publish(twistMsg);
-					haveMovedForward = false;
 					haveTurnedBackToCenter = true;
 				}
 				else 
 				{
 					twistMsg.linear.x = 0;
-					twistMsg.angular.z = rotateLeft ? 0.1 : -0.1;
+					twistMsg.angular.z = rotateLeft ? -0.5 : 0.5;
 					velPub.publish(twistMsg);
 				}
 
@@ -229,14 +228,16 @@ class GoalieRobot {
 			if (haveTurnedBackToCenter)
 			{
 				ROS_INFO("done rotating");
+				twistMsg.angular.z = 0;
+				twistMsg.linear.x = 0;
+				velPub.publish(twistMsg);
+
+				isBlocking = false;
 				// reset all of the booleans and count
 				haveTurnedBackToCenter = false;
 				haveTurnedToSide = false;
 				haveMovedForward = false;
 				haveMovedForwardCount = 0;
-				
-				//at this point, we should no longer be blocking but test in simulation before uncommenting
-				// isBlocking = false;
 				return;
 			}
 
