@@ -52,7 +52,8 @@ cv::Scalar black = (0, 255, 5), blue = (200, 200, 250);                 // RGB c
 static std::vector<double> objDist = {0.0, 0.0};                        // RED, BLUE in that order
 static std::vector<std::vector<int>> objCoord = {{0, 0, 0}, {0, 0, 0}}; // RED, BLUE, in that order
 static std::vector<bool> isEmpty = {false, false};                      // RED, BLUE, in that order
-static bool isKickingBall, inGame, goalSet, hasRedBall;
+bool isKickingBall, inGame, goalSet, hasRedBall;
+bool haveTurned, haveMovedBack, haveMovedForward;
 
 class KickerRobot
 {
@@ -99,6 +100,9 @@ class KickerRobot
         isKickingBall = false;
         //inGame = false;
         goalSet = false;
+	haveTurned = false;
+	haveMovedBack = false; 
+	haveMovedForward = false;
     }
     // destructor
     ~KickerRobot() {}
@@ -128,7 +132,7 @@ class KickerRobot
 
         if (kickerPos.position.x < goalUpperX + 1.0)
         {
-	    // comment out for debugging purposes
+	    // TODO: uncomment once debugging is done
             //twistMsg.linear.x = -0.5;
             //velPub.publish(twistMsg);
         }
@@ -156,44 +160,72 @@ class KickerRobot
 
         isKickingBall = true;
 
-        //determine if the goalie is on the left of the right of the image
-        bool onLeft = goalieOnLeft(objDist[BLUE]);
+	if (!haveTurned)// , haveMovedBack, haveMovedForward
+	{
+		//determine if the goalie is on the left of the right of the image
+        	bool onLeft = goalieOnLeft(objDist[BLUE]);
 
-        //set angular velocity based on goalie's position
-        twistMsg.angular.z = onLeft ? -0.5 : 0.5;
-        twistMsg.linear.x = 0;
+        	//set angular velocity based on goalie's position
+        	twistMsg.angular.z = onLeft ? 0.5 : -0.5;
+        	twistMsg.linear.x = 0;
 
-        //publish ths message
-        velPub.publish(twistMsg);
+        	//publish ths message
+        	velPub.publish(twistMsg);
+		
+		haveTurned = true;
 
-        //TODO: maybe wait a moment?
+		return;
+	}
 
-        // move backward
-        twistMsg.linear.x = -0.5;
-        twistMsg.angular.z = 0;
-        velPub.publish(twistMsg);
+	if (haveTurned && !haveMovedBack) 
+	{
+		// move backward
+        	twistMsg.linear.x = -0.5;
+        	twistMsg.angular.z = 0;
+		velPub.publish(twistMsg);
 
-        //TODO: maybe wait a moment
+		haveMovedBack = true;
+		return;
+	}
 
-        // move forward quickly
-        twistMsg.linear.x = 1.0;
-        twistMsg.angular.z = 0;
-        velPub.publish(twistMsg);
+        if (haveTurned && haveMovedBack && !haveMovedForward)
+	{
+        	// move forward quickly
+        	twistMsg.linear.x = 1.0;
+        	twistMsg.angular.z = 0;
+        	velPub.publish(twistMsg);
+		haveMovedForward = true;
+		return;
+	}
 
-        ROS_INFO("Ball has been kicked");
+	if(haveTurned && haveMovedBack && haveMovedForward)
+	{
+		haveTurned = false;
+		haveMovedBack = false;
+		haveMovedForward = false;
+		isKickingBall = false;
+		hasRedBall = false;
+	
+		ROS_INFO("Ball has been kicked");
 
-        hasRedBall = false;
-        isKickingBall = false;
+		return;
+	}
     }
 
     // method to have the robot move to the ball's location or look for the ball
     void moveTurtleBot(bool rotate = false, bool alignBlueBall = false)
     {
-        if (goalSet || isKickingBall)
+        if (goalSet)
         {
             ROS_INFO("A goal has been set, returning");
             return;
         }
+
+	if(isKickingBall) 
+	{
+		kickBall();
+		return;
+	]
 
         twistMsg.angular.z = -alignErrorRed / 225.0; // 225 worked well as a denominator to smooth the alignment
 
@@ -234,8 +266,8 @@ class KickerRobot
             if (objDist[BLUE] > 2.5)
                 twistMsg.linear.x = 0.3 * objDist[BLUE];
 
-            //else
-                //kickBall();
+            else
+                kickBall();
         }
 
         if (twistMsg.linear.x > MAX_BOT_VEL)
