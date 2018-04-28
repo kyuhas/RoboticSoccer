@@ -47,7 +47,7 @@ static std::vector<std::vector<int> > objCoords = {{0, 0, 0}, {0, 0, 0}}; // RED
 #define X 0
 #define MID_X_LOW 290
 #define MID_X_HIGH 360
-#define LOW_LEFT_ANGLE_Z -0.8
+#define LOW_LEFT_ANGLE_Z -0.7
 #define HIGH_LEFT_ANGLE_Z -0.6
 #define LOW_LEFT_ANGLE_W 0.7
 #define HIGH_LEFT_ANGLE_W 0.8
@@ -75,6 +75,7 @@ class GoalieRobot {
     	ros::Publisher mbcPub = nodeHandle_.advertise<move_base_msgs::MoveBaseGoal>("/goal_location", 1);
 	
 	int haveMovedForwardCount;
+	double expectedLocation;
   	
 	public:
 		//constructor
@@ -128,7 +129,6 @@ class GoalieRobot {
 		
 		void rotateGoalie(bool rotateLeft = false)
 		{
-			ROS_INFO("Going to rotate to go somewhere!");
 			// if you have not yet turned to the side
 			if (!haveTurnedToSide)
 			{
@@ -147,7 +147,7 @@ class GoalieRobot {
 					
 					else 
 					{
-						twistMsg.angular.z = -0.1;
+						twistMsg.angular.z = 0.5;
 						twistMsg.linear.x = 0;
 						velPub.publish(twistMsg);
 					}
@@ -163,7 +163,7 @@ class GoalieRobot {
 					}
 					else 
 					{
-						twistMsg.angular.z = 0.1;
+						twistMsg.angular.z = -0.5;
 						twistMsg.linear.x = 0;
 						velPub.publish(twistMsg);
 					}
@@ -172,14 +172,43 @@ class GoalieRobot {
 			}
 			
 			// if the turn goal has finished and we have not yet moved forward three times
-			if (haveTurnedToSide && haveMovedForwardCount < 3) 
+			if (haveTurnedToSide) 
 			{
-				ROS_INFO("moving forward three times.");
-				haveMovedForward = true;
-				twistMsg.angular.z = 0;
-				twistMsg.linear.z = 0.3;
-				velPub.publish(twistMsg);
-				haveMovedForwardCount++;
+				ROS_INFO("moving forward .");
+				if (haveMovedForwardCount == 0) 
+				{
+					if (rotateLeft) 
+						expectedLocation = 1.7;
+					else
+						expectedLocation = 2.7;
+				}
+
+				bool madeIt = false;
+
+				if (rotateLeft)
+					if (goaliePos.position.y <= expectedLocation)
+						madeIt = true;
+				else
+					if (goaliePos.position.y >= expectedLocation)
+						madeIt = true;
+
+				if (madeIt)
+				{
+					twistMsg.linear.x = 0;
+					twistMsg.angular.z = 0;
+					velPub.publish(twistMsg);
+					haveMovedForward = true;
+					haveTurnedToSide = false;
+				}
+				
+				else 
+				{
+					twistMsg.angular.z = 0;
+					twistMsg.linear.x = 0.3;
+					velPub.publish(twistMsg);
+					haveMovedForwardCount++;
+				}
+
 				return;
 			}
 			
@@ -224,88 +253,6 @@ class GoalieRobot {
 
 		}
 
-		// method to have the goalie rotate left or right
-		void rotateGoalie2(bool rotateLeft = false) 
-		{
-			ROS_INFO("Going to rotate to go somewhere!");
-			// if you have not yet turned to the side
-			if (!haveTurnedToSide)
-			{
-				ROS_INFO("Turning to side.");
-				haveTurnedToSide = true;
-
-				// create rotate goal  
-				move_base_msgs::MoveBaseGoal goal;
-		    		goal.target_pose.header.frame_id = "base_link";
-  				goal.target_pose.header.stamp = ros::Time::now();
-  				goal.target_pose.pose.position.x = goaliePos.position.x;
-  				goal.target_pose.pose.position.y = goaliePos.position.y;
-				goal.target_pose.pose.position.z = goaliePos.position.z;
-				if (rotateLeft) 
-				{
-					goal.target_pose.pose.orientation.z = -0.674;
-					goal.target_pose.pose.orientation.w = 0.738;
-				}
-				else
-				{
-  					goal.target_pose.pose.orientation.z = 0.796;
-					goal.target_pose.pose.orientation.w = 0.604;
-				}
-			
-				// publish rotate goal
-				moveToLocation(goal);
-				return;
-			}
-			
-			// if the turn goal has finished and we have not yet moved forward three times
-			if (!goalSet && haveTurnedToSide && haveMovedForwardCount < 3) 
-			{
-				ROS_INFO("moving forward three times.");
-				haveMovedForward = true;
-				twistMsg.angular.z = 0;
-				twistMsg.linear.z = 0.5;
-				velPub.publish(twistMsg);
-				haveMovedForwardCount++;
-				return;
-			}
-			
-			// if we have finished moving forward
-			if (haveMovedForward) {
-				ROS_INFO("turning back to center");
-				haveTurnedBackToCenter = true;
-				
-				// create rotate back to center goal -- turn to pi radians 
-				move_base_msgs::MoveBaseGoal goal;
-		    		goal.target_pose.header.frame_id = "base_link";
-  				goal.target_pose.header.stamp = ros::Time::now();
-  				goal.target_pose.pose.position.x = goaliePos.position.x;
-  				goal.target_pose.pose.position.y = goaliePos.position.y;
-				goal.target_pose.pose.position.z = goaliePos.position.z;
-				goal.target_pose.pose.orientation.z = -1;
-  				goal.target_pose.pose.orientation.w = 0;
-			
-				// publish rotate to center goal
-				moveToLocation(goal);
-				haveMovedForward = false;
-				return;
-			}
-			
-			// if we have finished turning back to center
-			if (!goalSet && haveTurnedBackToCenter)
-			{
-				ROS_INFO("done rotating");
-				// reset all of the booleans and count
-				haveTurnedBackToCenter = false;
-				haveTurnedToSide = false;
-				haveMovedForward = false;
-				haveMovedForwardCount = 0;
-				
-				//at this point, we should no longer be blocking but test in simulation before uncommenting
-				// isBlocking = false;
-				return;
-			}
-		}
-
 		// method to have the robot move so that it can see the ball
 		void moveTurtleBot()
 		{
@@ -321,12 +268,14 @@ class GoalieRobot {
 					isBlockingOnLeft = (objCoords[RED][X] <= MID_X_LOW);
 
 					// if goalie can move left
-					if (isBlockingOnLeft)// && goaliePos.position.x > goalUpperY - 0.5) 
+					if (isBlockingOnLeft && goaliePos.position.x > 1.8)
 						rotateGoalie(true);
 					
 					// if goalie can move right
-					if (!isBlockingOnLeft)// && goaliePos.position.x < goalLowerY + 0.5) 
+					if (!isBlockingOnLeft && goaliePos.position.x < 2.6) 
 						rotateGoalie(false);
+
+					return;
 					
 				}
 				
