@@ -70,7 +70,8 @@ class KickerRobot
     geometry_msgs::Twist twistMsg;
     geometry_msgs::Pose kickerPos;
 
-    bool isKickingBall = false, hasRedBall = false;
+    bool isKickingBall;
+    bool hasRedBall;
     clock_t this_time;
     clock_t last_time;
     double time_counter;
@@ -95,7 +96,8 @@ class KickerRobot
         inGame = true;
 
         // initialize booleans because C++ does not do this for us
-        //isKickingBall = false;
+        isKickingBall = false;
+        hasRedBall = false;
         //inGame = false;
         goalSet = false;
     }
