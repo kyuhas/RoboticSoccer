@@ -15,6 +15,8 @@
 #include <geometry_msgs/Quaternion.h>
 #include <cmath>
 
+//  <node name="goalie" pkg="final_project" type="goalie_robot" />
+
 // constants based on the position of the goal
 const double goalLowerX = 0.1;
 const double goalUpperX = 0.9;
@@ -42,7 +44,7 @@ static std::vector<std::vector<int> > objCoords = {{0, 0, 0}, {0, 0, 0}}; // RED
 #define BLUE 1
 #define MIN_RADIUS 0
 #define MAX_RADIUS 0
-#define X 1
+#define X 0
 #define MID_X_LOW 290
 #define MID_X_HIGH 360
 
@@ -69,10 +71,10 @@ class GoalieRobot {
 		//constructor
 		GoalieRobot() : imageTransport_(nodeHandle_) {
 			// real camera
-			//imageSub_ = imageTransport_.subscribe("/usb_cam/image_raw", 10, &KickerRobot::playSoccer, this);
+			imageSub_ = imageTransport_.subscribe("/usb_cam/image_raw", 10, &GoalieRobot::playSoccer, this);
 		
 			// simulation camera
-			imageSub_ = imageTransport_.subscribe("/camera/rgb/image_raw", 10, &GoalieRobot::playSoccer, this);
+			//imageSub_ = imageTransport_.subscribe("/camera/rgb/image_raw", 10, &GoalieRobot::playSoccer, this);
 			imagePub_ = imageTransport_.advertise("/image_converter/output_video", 10);
 			
 			//initialize bools
@@ -116,7 +118,7 @@ class GoalieRobot {
 		// method to have the goalie rotate left or right
 		void rotateGoalie(bool rotateLeft = false) 
 		{
-		
+			ROS_INFO("Going to rotate to go somewhere!");
 			// if you have not yet turned to the side
 			if (!haveTurnedToSide)
 			{
@@ -185,9 +187,11 @@ class GoalieRobot {
 		// method to have the robot move so that it can see the ball
 		void moveTurtleBot()
 		{
+			ROS_INFO("Move turtlebot");
 			// tune this value later
 			if (objDist[RED] <= 1.5 && objDist[RED] > 0.0) //make sure it isn't counting empty images  
 			{
+				ROS_INFO("close enough to try to block");
 				// see which side the red ball is on
 				isBlocking = true;
 
@@ -195,13 +199,13 @@ class GoalieRobot {
 				if (objCoords[RED][X] <= MID_X_LOW || objCoords[RED][X] >= MID_X_HIGH)
 				{
 					isBlockingOnLeft = (objCoords[RED][X] <= MID_X_LOW);
-					
+					ROS_INFO("will be blocking, yo");
 					// if goalie can move left
-					if (isBlockingOnLeft && goaliePos.position.x > goalUpperY - 0.5) 
+					if (isBlockingOnLeft)// && goaliePos.position.x > goalUpperY - 0.5) 
 						rotateGoalie(true);
 					
 					// if goalie can move right
-					if (!isBlockingOnLeft && goaliePos.position.x < goalLowerY + 0.5) 
+					if (!isBlockingOnLeft)// && goaliePos.position.x < goalLowerY + 0.5) 
 						rotateGoalie(false);
 					
 				}
@@ -259,6 +263,11 @@ class GoalieRobot {
 				cv::line(srcIMG, center, center, black, 2);
 
 				objDist[RED] = distFromObj(radius);
+
+				std::stringstream x_value;
+				x_value << xCoord;
+                		std::string xval = "    POS__X: " + x_value.str();
+                		cv::putText(srcIMG, xval, cv::Point(350, 300), cv::FONT_HERSHEY_SIMPLEX, 0.5, blue, 1, CV_AA);
 				
 				// move the turtlebot
 				moveTurtleBot();
@@ -267,8 +276,6 @@ class GoalieRobot {
 
 		//method to have the robot search for the ball and move toward it
 		void searchForBall(const sensor_msgs::ImageConstPtr& msg) {
-			
-			ROS_INFO("In search for ball");
 			
             		cv_bridge::CvImagePtr cvPtr;
             		std::vector<cv::Vec3f> circleIMG;
@@ -328,11 +335,11 @@ class GoalieRobot {
 		//method where the robot decides which action to take (try to block goal or search for ball)
         	void playSoccer(const sensor_msgs::ImageConstPtr &msg) {
 
-			ROS_INFO("In play soccer method");
 		    	if (!inGame) return;
 
 			searchForBall(msg);
 		}
+
         	//method to handle game commands
        		void gameCommandCallback(const std_msgs::String::ConstPtr &msg) {
 		    	//inGame = false;
