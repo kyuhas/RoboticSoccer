@@ -132,8 +132,16 @@ class GoalieRobot {
   				goal.target_pose.pose.position.x = goaliePos.position.x;
   				goal.target_pose.pose.position.y = goaliePos.position.y;
 				goal.target_pose.pose.position.z = goaliePos.position.z;
-  				goal.target_pose.pose.orientation.z = 0.707;
-				goal.target_pose.pose.orientation.w = (rotateLeft) ? -0.707 : 0.707;
+				if (rotateLeft) 
+				{
+					goal.target_pose.pose.orientation.z = -0.674;
+					goal.target_pose.pose.orientation.w = 0.738;
+				}
+				else
+				{
+  					goal.target_pose.pose.orientation.z = 0.796;
+					goal.target_pose.pose.orientation.w = 0.604;
+				}
 			
 				// publish rotate goal
 				moveToLocation(goal);
@@ -164,7 +172,8 @@ class GoalieRobot {
   				goal.target_pose.pose.position.x = goaliePos.position.x;
   				goal.target_pose.pose.position.y = goaliePos.position.y;
 				goal.target_pose.pose.position.z = goaliePos.position.z;
-  				goal.target_pose.pose.orientation.z = 1;
+				goal.target_pose.pose.orientation.z = -1;
+  				goal.target_pose.pose.orientation.w = 0;
 			
 				// publish rotate to center goal
 				moveToLocation(goal);
@@ -325,7 +334,7 @@ class GoalieRobot {
   			startingLocation.target_pose.pose.position.x = (goalLowerX + goalUpperX)/2.0;
   			startingLocation.target_pose.pose.position.y = 1.0;
 			startingLocation.target_pose.pose.position.z = goaliePos.position.z;
-  			startingLocation.target_pose.pose.orientation.z = 1;
+  			startingLocation.target_pose.pose.orientation.z = -1;
             		return startingLocation;
 		}
 
