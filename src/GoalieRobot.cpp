@@ -187,11 +187,9 @@ class GoalieRobot {
 		// method to have the robot move so that it can see the ball
 		void moveTurtleBot()
 		{
-			ROS_INFO("Move turtlebot");
 			// tune this value later
 			if (objDist[RED] <= 1.5 && objDist[RED] > 0.0) //make sure it isn't counting empty images  
 			{
-				ROS_INFO("close enough to try to block");
 				// see which side the red ball is on
 				isBlocking = true;
 
@@ -199,7 +197,7 @@ class GoalieRobot {
 				if (objCoords[RED][X] <= MID_X_LOW || objCoords[RED][X] >= MID_X_HIGH)
 				{
 					isBlockingOnLeft = (objCoords[RED][X] <= MID_X_LOW);
-					ROS_INFO("will be blocking, yo");
+
 					// if goalie can move left
 					if (isBlockingOnLeft)// && goaliePos.position.x > goalUpperY - 0.5) 
 						rotateGoalie(true);
@@ -263,11 +261,6 @@ class GoalieRobot {
 				cv::line(srcIMG, center, center, black, 2);
 
 				objDist[RED] = distFromObj(radius);
-
-				std::stringstream x_value;
-				x_value << xCoord;
-                		std::string xval = "    POS__X: " + x_value.str();
-                		cv::putText(srcIMG, xval, cv::Point(350, 300), cv::FONT_HERSHEY_SIMPLEX, 0.5, blue, 1, CV_AA);
 				
 				// move the turtlebot
 				moveTurtleBot();

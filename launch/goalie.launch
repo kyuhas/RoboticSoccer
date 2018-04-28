@@ -14,6 +14,10 @@
     <param name="dict" value="/home/kyuhas/catkin_ws/src/final_project/params/8403.dic"/>
   </node>
 
+  <include file="/opt/ros/indigo/share/turtlebot_navigation/launch/amcl_demo.launch">
+    <arg name="map_file" value="/home/kyuhas/catkin_ws/src/final_project/params/map.yaml" />
+  </include>
+
   <node name="pocketsphinx_gameCommands" pkg="final_project" type="pocketsphinx_gameCommands.py" />
 
   <node name="move_base_controller" pkg="final_project" type="move_base_controller.py" />

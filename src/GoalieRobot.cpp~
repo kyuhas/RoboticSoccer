@@ -194,7 +194,7 @@ class GoalieRobot {
 				ROS_INFO("close enough to try to block");
 				// see which side the red ball is on
 				isBlocking = true;
-				ROS_INFO("Down here");
+
 				// if the red ball is approaching from left or right 
 				if (objCoords[RED][X] <= MID_X_LOW || objCoords[RED][X] >= MID_X_HIGH)
 				{
