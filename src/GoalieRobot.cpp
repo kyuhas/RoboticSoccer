@@ -47,6 +47,15 @@ static std::vector<std::vector<int> > objCoords = {{0, 0, 0}, {0, 0, 0}}; // RED
 #define X 0
 #define MID_X_LOW 290
 #define MID_X_HIGH 360
+#define LOW_LEFT_ANGLE_Z -0.8
+#define HIGH_LEFT_ANGLE_Z -0.6
+#define LOW_LEFT_ANGLE_W 0.7
+#define HIGH_LEFT_ANGLE_W 0.8
+#define LOW_RIGHT_ANGLE_Z 0.7
+#define HIGH_RIGHT_ANGLE_Z 0.85
+#define LOW_RIGHT_ANGLE_W 0.6
+#define HIGH_RIGHT_ANGLE_W 0.7
+#define HIGH_STRAIGHT_ANGLE_Z -0.9
 
 bool inGame, goalSet, haveTurnedToSide, haveTurnedBackToCenter, haveMovedForward, isBlocking, isBlockingOnLeft;
 
@@ -109,14 +118,114 @@ class GoalieRobot {
 		// to the center of the goal
 		void setPose(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg) {
 			goaliePos = msg->pose.pose;
+			/*
 			if(goaliePos.position.x < goalLowerX || goaliePos.position.x > goalUpperX
 				|| goaliePos.position.y < goalLowerY || goaliePos.position.y > goalUpperY) {
 				moveToLocation(getStartingLocation());
 			}
+			*/
 		}
 		
+		void rotateGoalie(bool rotateLeft = false)
+		{
+			ROS_INFO("Going to rotate to go somewhere!");
+			// if you have not yet turned to the side
+			if (!haveTurnedToSide)
+			{
+				ROS_INFO("Turning to side.");
+
+				if (rotateLeft) 
+				{
+					
+					if (goaliePos.orientation.z >=  LOW_LEFT_ANGLE_Z && goaliePos.orientation.z <= HIGH_LEFT_ANGLE_Z) 
+					{
+						twistMsg.angular.z = 0;
+						twistMsg.linear.x = 0;
+						velPub.publish(twistMsg);
+						haveTurnedToSide = true;
+					}
+					
+					else 
+					{
+						twistMsg.angular.z = -0.1;
+						twistMsg.linear.x = 0;
+						velPub.publish(twistMsg);
+					}
+				}
+				else 
+				{
+					if (goaliePos.orientation.z >=  LOW_RIGHT_ANGLE_Z && goaliePos.orientation.z <= HIGH_RIGHT_ANGLE_Z) 
+					{
+						twistMsg.angular.z = 0;
+						twistMsg.linear.x = 0;
+						velPub.publish(twistMsg);
+						haveTurnedToSide = true;
+					}
+					else 
+					{
+						twistMsg.angular.z = 0.1;
+						twistMsg.linear.x = 0;
+						velPub.publish(twistMsg);
+					}
+				}
+				return;
+			}
+			
+			// if the turn goal has finished and we have not yet moved forward three times
+			if (haveTurnedToSide && haveMovedForwardCount < 3) 
+			{
+				ROS_INFO("moving forward three times.");
+				haveMovedForward = true;
+				twistMsg.angular.z = 0;
+				twistMsg.linear.z = 0.3;
+				velPub.publish(twistMsg);
+				haveMovedForwardCount++;
+				return;
+			}
+			
+			// if we have finished moving forward
+			if (haveMovedForward) {
+				ROS_INFO("turning back to center");
+				if (goaliePos.orientation.z <= HIGH_STRAIGHT_ANGLE_Z)
+				{
+					twistMsg.angular.z = 0;
+					twistMsg.linear.x = 0;
+					velPub.publish(twistMsg);
+					haveMovedForward = false;
+					haveTurnedBackToCenter = true;
+				}
+				else 
+				{
+					twistMsg.linear.x = 0;
+					twistMsg.angular.z = rotateLeft ? 0.1 : -0.1;
+					velPub.publish(twistMsg);
+				}
+
+				return;
+			}
+			
+			// if we have finished turning back to center
+			if (haveTurnedBackToCenter)
+			{
+				ROS_INFO("done rotating");
+				// reset all of the booleans and count
+				haveTurnedBackToCenter = false;
+				haveTurnedToSide = false;
+				haveMovedForward = false;
+				haveMovedForwardCount = 0;
+				
+				//at this point, we should no longer be blocking but test in simulation before uncommenting
+				// isBlocking = false;
+				return;
+			}
+
+
+
+
+		}
+
 		// method to have the goalie rotate left or right
-		void rotateGoalie(bool rotateLeft = false) 
+		void rotateGoalie2(bool rotateLeft = false) 
 		{
 			ROS_INFO("Going to rotate to go somewhere!");
 			// if you have not yet turned to the side
