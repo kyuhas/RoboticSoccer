@@ -46,14 +46,6 @@ const double goalUpperY = 3.0;
 const double goalCenterY = (goalUpperY + goalLowerY) / 2.0;
 
 static const std::string OPENCV_WINDOW = "Image window";
-double alignErrorRed = 0.0, alignErrorBlue = 0.0, botVelX = 0.0, botAngZ = 0.0;
-
-cv::Scalar black = (0, 255, 5), blue = (200, 200, 250);          // RGB color for circle to be drawn on image
-std::vector<double> objDist = {0.0, 0.0};                        // RED, BLUE in that order
-std::vector<std::vector<int>> objCoord = {{0, 0, 0}, {0, 0, 0}}; // RED, BLUE, in that order
-std::vector<bool> isEmpty = {false, false};                      // RED, BLUE, in that order
-bool isKickingBall, inGame, goalSet, hasRedBall;
-bool haveTurned, haveMovedBack, haveMovedForward;
 
 class KickerRobot
 {
@@ -71,11 +63,16 @@ class KickerRobot
     geometry_msgs::Twist twistMsg;
     geometry_msgs::Pose kickerPos;
 
-    bool isKickingBall = false;
-    bool hasRedBall = false;
-    clock_t this_time;
-    clock_t last_time;
-    double time_counter;
+    double alignErrorRed = 0.0, alignErrorBlue = 0.0, botVelX = 0.0, botAngZ = 0.0;
+
+    cv::Scalar black = (0, 255, 5), blue = (200, 200, 250);          // RGB color for circle to be drawn on image
+    std::vector<double> objDist = {0.0, 0.0};                        // RED, BLUE in that order
+    std::vector<std::vector<int>> objCoord = {{0, 0, 0}, {0, 0, 0}}; // RED, BLUE, in that order
+    std::vector<bool> isEmpty = {false, false};                      // RED, BLUE, in that order
+    bool isKickingBall, inGame, goalSet, hasRedBall, haveTurned, haveMovedBack, haveMovedForward;
+
+    clock_t thisTime, lastTime;
+    double timeCounter;
 
   public:
     // constructor
@@ -89,20 +86,22 @@ class KickerRobot
         imagePub_ = imageTransport_.advertise("/image_converter/output_video", 10);
 
         // initialize clock vars
-        this_time = clock();
-        last_time = this_time;
-        time_counter = 0;
+        thisTime = clock();
+        lastTime = thisTime;
+        timeCounter = 0;
 
         // for testing purposes only
         inGame = true;
+        //inGame = false;
 
         // initialize booleans because C++ does not do this for us
         isKickingBall = false;
-        //inGame = false;
+
         goalSet = false;
         haveTurned = false;
         haveMovedBack = false;
         haveMovedForward = false;
+        hasRedBall = false;
     }
     // destructor
     ~KickerRobot() {}
@@ -152,6 +151,7 @@ class KickerRobot
 
         if (!haveTurned) // , haveMovedBack, haveMovedForward
         {
+            ROS_INFO("turning");
             //determine if the goalie is on the left of the right of the image
             bool onLeft = goalieOnLeft(objDist[BLUE]);
 
@@ -169,6 +169,7 @@ class KickerRobot
 
         if (haveTurned && !haveMovedBack)
         {
+            ROS_INFO("Moving back");
             // move backward
             twistMsg.linear.x = -0.5;
             twistMsg.angular.z = 0;
@@ -180,6 +181,7 @@ class KickerRobot
 
         if (haveTurned && haveMovedBack && !haveMovedForward)
         {
+            ROS_INFO("moving foward quickly");
             // move forward quickly
             twistMsg.linear.x = 1.0;
             twistMsg.angular.z = 0;
@@ -190,6 +192,7 @@ class KickerRobot
 
         if (haveTurned && haveMovedBack && haveMovedForward)
         {
+            ROS_INFO("moving forward");
             haveTurned = false;
             haveMovedBack = false;
             haveMovedForward = false;
@@ -223,14 +226,14 @@ class KickerRobot
         {
             twistMsg.angular.z = 0.5;
             twistMsg.linear.x = 0.0;
-            ROS_INFO("I am rotating");
+            //ROS_INFO("I am rotating");
         }
 
         else if (alignBlueBall)
         {
             twistMsg.angular.z = -alignErrorBlue / 225.0;
             twistMsg.linear.x = 0.0;
-            ROS_INFO("Rotating so that I am centered on blue ball");
+            //ROS_INFO("Rotating so that I am centered on blue ball");
         }
 
         else if (!hasRedBall)
@@ -266,7 +269,6 @@ class KickerRobot
     // method to get the current velocity of the robot
     void odomCallback(const nav_msgs::Odometry::ConstPtr &msg)
     {
-        ROS_INFO("Getting odom callback");
         // robot linear and angular velocity rounded to the nearest 100th
         botVelX = floor((msg->twist.twist.linear.x * 100 + 0.5)) / 100;
         botAngZ = floor((msg->twist.twist.angular.z * 100 + 0.5)) / 100;
@@ -328,6 +330,7 @@ class KickerRobot
 
                 else
                 {
+                    ROS_INFO("blue details");
                     // kicker has the red ball -- now make sure that we are centered on blue ball
                     alignErrorBlue = objCoord[BLUE][X] - (IMG_WIDTH_PX / 2.0);
                     moveTurtleBot(false, true);
@@ -389,7 +392,6 @@ class KickerRobot
             // define color limits, image weighting, blurring, and circle detection
             if (!hasRedBall)
             {
-                ROS_INFO("Tracking red");
                 cv::inRange(hsvIMG, cv::Scalar(0, 100, 100), cv::Scalar(20, 255, 255), redIMG_lower);
                 cv::inRange(hsvIMG, cv::Scalar(160, 100, 100), cv::Scalar(170, 255, 255), redIMG_upper);
                 cv::addWeighted(redIMG_lower, 1.0, redIMG_upper, 1.0, 0.0, redIMG);
@@ -399,7 +401,6 @@ class KickerRobot
 
             else
             {
-                ROS_INFO("Tracking blue, I have red");
                 cv::inRange(hsvIMG, cv::Scalar(60, 100, 100), cv::Scalar(80, 255, 255), blueIMG_lower);
                 cv::inRange(hsvIMG, cv::Scalar(100, 100, 100), cv::Scalar(120, 255, 255), blueIMG_upper);
                 cv::addWeighted(blueIMG_lower, 1.0, blueIMG_upper, 1.0, 0.0, blueIMG);
