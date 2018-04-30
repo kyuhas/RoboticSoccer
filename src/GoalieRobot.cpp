@@ -43,8 +43,8 @@ static std::vector<std::vector<int> > objCoords = {{0, 0, 0}, {0, 0, 0}}; // RED
 #define MIN_RADIUS 0
 #define MAX_RADIUS 0
 #define X 0
-#define MID_X_LOW 150
-#define MID_X_HIGH 500
+#define MID_X_LOW 200
+#define MID_X_HIGH 450
 #define LOW_LEFT_ANGLE_Z -0.8
 #define HIGH_LEFT_ANGLE_Z -0.7
 #define LOW_RIGHT_ANGLE_Z 0.7
@@ -172,9 +172,9 @@ class GoalieRobot {
 				if (haveMovedForwardCount == 0) 
 				{
 					if (rotateLeft) 
-						expectedLocation = goaliePos.position.y - 0.5;
+						expectedLocation = goaliePos.position.y - 0.25;
 					else
-						expectedLocation = goaliePos.position.y + 0.5;
+						expectedLocation = goaliePos.position.y + 0.25;
 				}
 
 
@@ -220,7 +220,7 @@ class GoalieRobot {
 			// if we have finished turning back to center
 			if (haveTurnedBackToCenter)
 			{
-				ROS_INFO("done rotating");
+				ROS_INFO("done blocking");
 				twistMsg.angular.z = 0;
 				twistMsg.linear.x = 0;
 				velPub.publish(twistMsg);
@@ -233,10 +233,6 @@ class GoalieRobot {
 				haveMovedForwardCount = 0;
 				return;
 			}
-
-
-
-
 		}
 
 		// method to have the robot move so that it can see the ball
@@ -255,14 +251,19 @@ class GoalieRobot {
 
 					// if goalie can move left
 					if (isBlockingOnLeft && goaliePos.position.y > 1.8)
+					{
+						ROS_INFO("rotate left");
 						rotateGoalie(true);
+					}
 					
 					// if goalie can move right
 					if (!isBlockingOnLeft && goaliePos.position.y < 2.6) 
+					{
+						ROS_INFO("rotate right");
 						rotateGoalie(false);
+					}
 
 					return;
-					
 				}
 				
 				else isBlocking = false;
