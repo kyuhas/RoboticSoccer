@@ -45,12 +45,10 @@ static std::vector<std::vector<int> > objCoords = {{0, 0, 0}, {0, 0, 0}}; // RED
 #define MIN_RADIUS 0
 #define MAX_RADIUS 0
 #define X 0
-#define MID_X_LOW 290
-#define MID_X_HIGH 360
-#define LOW_LEFT_ANGLE_Z -0.7
-#define HIGH_LEFT_ANGLE_Z -0.6
-#define LOW_LEFT_ANGLE_W 0.7
-#define HIGH_LEFT_ANGLE_W 0.8
+#define MID_X_LOW 150
+#define MID_X_HIGH 500
+#define LOW_LEFT_ANGLE_Z -0.8
+#define HIGH_LEFT_ANGLE_Z -0.7
 #define LOW_RIGHT_ANGLE_Z 0.7
 #define HIGH_RIGHT_ANGLE_Z 0.85
 #define LOW_RIGHT_ANGLE_W 0.6
@@ -132,12 +130,11 @@ class GoalieRobot {
 			// if you have not yet turned to the side
 			if (!haveTurnedToSide)
 			{
-				ROS_INFO("Turning to side.");
 
 				if (rotateLeft) 
 				{
 					
-					if (goaliePos.orientation.z >=  LOW_LEFT_ANGLE_Z && goaliePos.orientation.z <= HIGH_LEFT_ANGLE_Z) 
+					if (goaliePos.orientation.z >= LOW_LEFT_ANGLE_Z && goaliePos.orientation.z <= HIGH_LEFT_ANGLE_Z) 
 					{
 						twistMsg.angular.z = 0;
 						twistMsg.linear.x = 0;
@@ -174,7 +171,6 @@ class GoalieRobot {
 			// if the turn goal has finished and we have not yet moved forward three times
 			if (haveTurnedToSide && !haveMovedForward) 
 			{
-				ROS_INFO("moving forward.");
 				if (haveMovedForwardCount == 0) 
 				{
 					if (rotateLeft) 
@@ -196,7 +192,7 @@ class GoalieRobot {
 				else 
 				{
 					twistMsg.angular.z = 0;
-					twistMsg.linear.x = 0.3;
+					twistMsg.linear.x = 0.5;
 					velPub.publish(twistMsg);
 					haveMovedForwardCount++;
 				}
@@ -206,8 +202,7 @@ class GoalieRobot {
 			
 			// if we have finished moving forward
 			if (haveMovedForward && !haveTurnedBackToCenter) {
-				ROS_INFO("turning back to center");
-				if (goaliePos.orientation.z <= 0.1)
+				if (goaliePos.orientation.w <= 0.1)
 				{
 					twistMsg.angular.z = 0;
 					twistMsg.linear.x = 0;
@@ -261,11 +256,11 @@ class GoalieRobot {
 					isBlockingOnLeft = (objCoords[RED][X] <= MID_X_LOW);
 
 					// if goalie can move left
-					if (isBlockingOnLeft && goaliePos.position.x > 1.8)
+					if (isBlockingOnLeft && goaliePos.position.y > 1.8)
 						rotateGoalie(true);
 					
 					// if goalie can move right
-					if (!isBlockingOnLeft && goaliePos.position.x < 2.6) 
+					if (!isBlockingOnLeft && goaliePos.position.y < 2.6) 
 						rotateGoalie(false);
 
 					return;
