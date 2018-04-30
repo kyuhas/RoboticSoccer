@@ -17,6 +17,8 @@
 #include <math.h>
 #include <limits>
 
+//<node name="kicker_collect" pkg="final_project" type="kicker_collect_ball" />
+
 //constants used throughout the program
 #define RGB_FOCAL_LEN_MM 138.90625 // camera focal length in mm ... 525 pixels
 #define BALL_DIAM_MM 203.2         // 8" diameter ball in mm
@@ -79,10 +81,10 @@ class KickerRobot
     KickerRobot() : imageTransport_(nodeHandle_)
     {
         // real camera
-        //imageSub_ = imageTransport_.subscribe("/usb_cam/image_raw", 10, &KickerRobot::playSoccer, this);
+        imageSub_ = imageTransport_.subscribe("/usb_cam/image_raw", 10, &KickerRobot::playSoccer, this);
 
         // camera used for simulation
-        imageSub_ = imageTransport_.subscribe("/camera/rgb/image_raw", 10, &KickerRobot::playSoccer, this);
+        //imageSub_ = imageTransport_.subscribe("/camera/rgb/image_raw", 10, &KickerRobot::playSoccer, this);
         imagePub_ = imageTransport_.advertise("/image_converter/output_video", 10);
 
         // initialize clock vars
@@ -257,7 +259,8 @@ class KickerRobot
                 twistMsg.linear.x = 0.3 * objDist[BLUE];
 
             else
-                kickBall();
+		ROS_INFO("I want to kick the ball now");
+                //kickBall();
         }
 
         if (twistMsg.linear.x > MAX_BOT_VEL)
@@ -297,10 +300,24 @@ class KickerRobot
         isEmpty[color] = circleIMG.empty();
 
         if (isEmpty[color])
-            objDist[color] = 99.0;
+	{
+		if (color == RED && objDist[RED] <= 0.5 && objDist[RED] != 0.0)
+		{
+			hasRedBall = true;
+			isEmpty[RED] = false;
+			ROS_INFO("GOT DAT RED BALL, YO");
+			return;
+		}
+		else
+		{
+			objDist[color] = 0.0;
+			if (color == BLUE)
+				moveTurtleBot(true);
+		}
+	}
 
         // if we don't have the red ball and the image does not contain red, rotate the TurtleBot until red ball is found
-        if (isEmpty[RED] && !hasRedBall)
+        if (color == RED && isEmpty[RED] && !hasRedBall)
             moveTurtleBot(true);
 
         else
@@ -324,20 +341,20 @@ class KickerRobot
                 {
                     // we do not have the red ball - go to it
                     alignErrorRed = objCoord[RED][X] - (IMG_WIDTH_PX / 2.0);
-                    hasRedBall = objDist[RED] <= 0.35;
                     moveTurtleBot();
                 }
 
                 else
                 {
-                    ROS_INFO("blue details");
+                    ROS_INFO("i see a blue circle. deciding what to do.");
                     // kicker has the red ball -- now make sure that we are centered on blue ball
                     alignErrorBlue = objCoord[BLUE][X] - (IMG_WIDTH_PX / 2.0);
                     moveTurtleBot(false, true);
 
                     // if the blue ball is close to the center of the frame, move turtlebot
                     if (objCoord[BLUE][X] <= MID_X_HIGH && objCoord[BLUE][X] >= MID_X_LOW)
-                        moveTurtleBot();
+			ROS_INFO("I AM ALIGNED WITH THE BLUE BALL");
+                        //moveTurtleBot();
                 }
 
                 // for easy debugging in Gazebo, please wait until final code is pushed to delete
@@ -416,7 +433,9 @@ class KickerRobot
         }
 
         if (!hasRedBall)
+	{
             trackBall(redCircleIMG, srcIMG, RED);
+	}
 
         else
             trackBall(blueCircleIMG, srcIMG, BLUE);
