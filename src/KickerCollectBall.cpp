@@ -17,8 +17,6 @@
 #include <math.h>
 #include <limits>
 
-//<node name="kicker_collect" pkg="final_project" type="kicker_collect_ball" />
-
 //constants used throughout the program
 #define RGB_FOCAL_LEN_MM 138.90625 // camera focal length in mm ... 525 pixels
 #define BALL_DIAM_MM 203.2         // 8" diameter ball in mm
@@ -34,8 +32,8 @@
 #define R 2
 #define MIN_RADIUS 0
 #define MAX_RADIUS 0
-#define MID_X_LOW 310
-#define MID_X_HIGH 330
+#define MID_X_LOW 250
+#define MID_X_HIGH 400
 
 // constant time for how frequently to check if the ball is still there
 const int NUM_SECONDS = 5;
@@ -143,9 +141,19 @@ class KickerRobot
         mbcPub.publish(goal);
     }
 
+    void kickBall()
+    {
+	isKickingBall = true;
+
+
+	isKickingBall = false;
+
+
+    }
+
     // method to actually kick the ball into the goal
     // TODO: TEST THIS IN GAZEBO ONCE BALL "STICKS"
-    void kickBall()
+    void kickBall2()
     {
         ROS_INFO("Kicking ball");
 
@@ -244,22 +252,18 @@ class KickerRobot
             ROS_INFO("Going to get the red ball.");
         }
 
-        else if (hasRedBall && isEmpty[BLUE])
-        {
-            ROS_INFO("Looking for the blue ball");
-            twistMsg.angular.z = 0.2;
-            twistMsg.linear.x = 0.0;
-        }
-
         else if (hasRedBall && !isEmpty[BLUE])
         {
             ROS_INFO("I have the red ball and can see the goal");
             // if you are far away from the goal, move toward it. otherwise, try to kick the ball
-            if (objDist[BLUE] > 2.5)
-                twistMsg.linear.x = 0.3 * objDist[BLUE];
+            if (objDist[BLUE] > 1.5)
+                twistMsg.linear.x = MAX_BOT_VEL;
 
             else
-		ROS_INFO("I want to kick the ball now");
+	    {
+		twistMsg.linear.x = 0;
+		twistMsg.angular.z = 0;
+	    }
                 //kickBall();
         }
 
@@ -296,12 +300,13 @@ class KickerRobot
     // method to track the ball
     void trackBall(std::vector<cv::Vec3f> circleIMG, cv::Mat srcIMG, int color)
     {
+
         // if the image does not contain any of the color we are looking for, give that color a zero distance
         isEmpty[color] = circleIMG.empty();
 
         if (isEmpty[color])
 	{
-		if (color == RED && objDist[RED] <= 0.5 && objDist[RED] != 0.0)
+		if (color == RED && objDist[RED] <= 0.6 && objDist[RED] != 0.0)
 		{
 			hasRedBall = true;
 			isEmpty[RED] = false;
@@ -353,8 +358,7 @@ class KickerRobot
 
                     // if the blue ball is close to the center of the frame, move turtlebot
                     if (objCoord[BLUE][X] <= MID_X_HIGH && objCoord[BLUE][X] >= MID_X_LOW)
-			ROS_INFO("I AM ALIGNED WITH THE BLUE BALL");
-                        //moveTurtleBot();
+                        moveTurtleBot();
                 }
 
                 // for easy debugging in Gazebo, please wait until final code is pushed to delete
@@ -393,7 +397,7 @@ class KickerRobot
         cv_bridge::CvImagePtr cvPtr;
         cv_bridge::CvImagePtr cvGrayPtr;
         std::vector<cv::Vec3f> circleIMG, redCircleIMG, blueCircleIMG;
-        cv::Mat srcIMG, hsvIMG, redIMG_lower, redIMG_upper, redIMG, blueIMG_lower, blueIMG_upper, blueIMG;
+        cv::Mat srcIMG, hsvIMG, redIMG_lower, redIMG_upper, redIMG, blueIMG_lower, blueIMG_upper, blueIMG, greenRange;
 
         cv::Scalar black = (0, 255, 5);    // RGB color for circle to be drawn on image
         cv::Scalar blue = (200, 200, 250); // RGB color for text displayed on image
@@ -418,9 +422,13 @@ class KickerRobot
 
             else
             {
-                cv::inRange(hsvIMG, cv::Scalar(60, 100, 100), cv::Scalar(80, 255, 255), blueIMG_lower);
-                cv::inRange(hsvIMG, cv::Scalar(100, 100, 100), cv::Scalar(120, 255, 255), blueIMG_upper);
-                cv::addWeighted(blueIMG_lower, 1.0, blueIMG_upper, 1.0, 0.0, blueIMG);
+                //cv::inRange(hsvIMG, cv::Scalar(60, 100, 100), cv::Scalar(80, 255, 255), blueIMG_lower);
+                //cv::inRange(hsvIMG, cv::Scalar(100, 100, 100), cv::Scalar(120, 255, 255), blueIMG_upper);
+                
+		cv::inRange(hsvIMG, cv::Scalar(50, 100, 100), cv::Scalar(70, 255, 255), greenRange);
+                //cv::inRange(hsvIMG, cv::Scalar(100, 100, 100), cv::Scalar(120, 255, 255), blueIMG_upper);
+                //cv::addWeighted(blueIMG_lower, 1.0, blueIMG_upper, 1.0, 0.0, blueIMG);
+		cv::addWeighted(greenRange, 1.0, greenRange, 1.0, 0.0, blueIMG);
                 cv::GaussianBlur(blueIMG, blueIMG, cv::Size(9, 9), 2, 2);
                 cv::HoughCircles(blueIMG, blueCircleIMG, CV_HOUGH_GRADIENT, 1, hsvIMG.rows / 8, 100, 20, MIN_RADIUS, MAX_RADIUS);
             }
