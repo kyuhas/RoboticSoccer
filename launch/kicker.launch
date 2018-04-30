@@ -18,5 +18,7 @@
 
   <node name="move_base_controller" pkg="final_project" type="move_base_controller.py" />
 
+  <node name="kicker_collect" pkg="final_project" type="kicker_collect_ball" />
+
 
 </launch>

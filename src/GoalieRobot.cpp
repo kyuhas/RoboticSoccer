@@ -43,8 +43,8 @@ static std::vector<std::vector<int>> objCoords = {{0, 0, 0}, {0, 0, 0}}; // RED,
 #define MIN_RADIUS 0
 #define MAX_RADIUS 0
 #define X 0
-#define MID_X_LOW 150
-#define MID_X_HIGH 500
+#define MID_X_LOW 200
+#define MID_X_HIGH 450
 #define LOW_LEFT_ANGLE_Z -0.8
 #define HIGH_LEFT_ANGLE_Z -0.7
 #define LOW_RIGHT_ANGLE_Z 0.7
@@ -125,6 +125,7 @@ class GoalieRobot
 				moveToLocation(getStartingLocation());
 			}
 			*/
+<<<<<<< HEAD
     }
 
     void rotateGoalie(bool rotateLeft = false)
@@ -424,6 +425,302 @@ class GoalieRobot
         }
         */
     }
+=======
+		}
+		
+		void rotateGoalie(bool rotateLeft = false)
+		{
+			// if you have not yet turned to the side
+			if (!haveTurnedToSide)
+			{
+
+				if (rotateLeft) 
+				{
+					
+					if (goaliePos.orientation.z >= LOW_LEFT_ANGLE_Z && goaliePos.orientation.z <= HIGH_LEFT_ANGLE_Z) 
+					{
+						twistMsg.angular.z = 0;
+						twistMsg.linear.x = 0;
+						velPub.publish(twistMsg);
+						haveTurnedToSide = true;
+					}
+					
+					else 
+					{
+						twistMsg.angular.z = 0.5;
+						twistMsg.linear.x = 0;
+						velPub.publish(twistMsg);
+					}
+				}
+				else 
+				{
+					if (goaliePos.orientation.z >=  LOW_RIGHT_ANGLE_Z && goaliePos.orientation.z <= HIGH_RIGHT_ANGLE_Z) 
+					{
+						twistMsg.angular.z = 0;
+						twistMsg.linear.x = 0;
+						velPub.publish(twistMsg);
+						haveTurnedToSide = true;
+					}
+					else 
+					{
+						twistMsg.angular.z = -0.5;
+						twistMsg.linear.x = 0;
+						velPub.publish(twistMsg);
+					}
+				}
+				return;
+			}
+			
+			// if the turn goal has finished and we have not yet moved forward three times
+			if (haveTurnedToSide && !haveMovedForward) 
+			{
+				if (haveMovedForwardCount == 0) 
+				{
+					if (rotateLeft) 
+						expectedLocation = goaliePos.position.y - 0.25;
+					else
+						expectedLocation = goaliePos.position.y + 0.25;
+				}
+
+
+				if ((rotateLeft && goaliePos.position.y <= expectedLocation) || (!rotateLeft && goaliePos.position.y >= expectedLocation))
+				{
+					twistMsg.linear.x = 0;
+					twistMsg.angular.z = 0;
+					velPub.publish(twistMsg);
+					haveMovedForward = true;
+					//haveTurnedToSide = false;
+				}
+				
+				else 
+				{
+					twistMsg.angular.z = 0;
+					twistMsg.linear.x = 0.5;
+					velPub.publish(twistMsg);
+					haveMovedForwardCount++;
+				}
+
+				return;
+			}
+			
+			// if we have finished moving forward
+			if (haveMovedForward && !haveTurnedBackToCenter) {
+				if (goaliePos.orientation.w <= 0.1)
+				{
+					twistMsg.angular.z = 0;
+					twistMsg.linear.x = 0;
+					velPub.publish(twistMsg);
+					haveTurnedBackToCenter = true;
+				}
+				else 
+				{
+					twistMsg.linear.x = 0;
+					twistMsg.angular.z = rotateLeft ? -0.5 : 0.5;
+					velPub.publish(twistMsg);
+				}
+
+				return;
+			}
+			
+			// if we have finished turning back to center
+			if (haveTurnedBackToCenter)
+			{
+				ROS_INFO("done blocking");
+				twistMsg.angular.z = 0;
+				twistMsg.linear.x = 0;
+				velPub.publish(twistMsg);
+
+				isBlocking = false;
+				// reset all of the booleans and count
+				haveTurnedBackToCenter = false;
+				haveTurnedToSide = false;
+				haveMovedForward = false;
+				haveMovedForwardCount = 0;
+				return;
+			}
+		}
+
+		// method to have the robot move so that it can see the ball
+		void moveTurtleBot()
+		{
+			// tune this value later
+			if (objDist[RED] <= 1.5 && objDist[RED] > 0.0) //make sure it isn't counting empty images  
+			{
+				// see which side the red ball is on
+				isBlocking = true;
+
+				// if the red ball is approaching from left or right 
+				if (objCoords[RED][X] <= MID_X_LOW || objCoords[RED][X] >= MID_X_HIGH)
+				{
+					isBlockingOnLeft = (objCoords[RED][X] <= MID_X_LOW);
+
+					// if goalie can move left
+					if (isBlockingOnLeft && goaliePos.position.y > 1.8)
+					{
+						ROS_INFO("rotate left");
+						rotateGoalie(true);
+					}
+					
+					// if goalie can move right
+					if (!isBlockingOnLeft && goaliePos.position.y < 2.6) 
+					{
+						ROS_INFO("rotate right");
+						rotateGoalie(false);
+					}
+
+					return;
+				}
+				
+				else isBlocking = false;
+			}
+			
+			// if the red ball is further than 1.5 meters away, we are no longer blocking
+			isBlocking = false;
+			
+		}
+
+		//method to get the current velocity of the robot
+		void odomCallback(const nav_msgs::Odometry::ConstPtr& msg){
+			// robot linear and angular velocity rounded to the nearest 100th
+			botVelX = floor((msg->twist.twist.linear.x*100 + 0.5))/100;
+		}
+
+
+		//the ball is getting close to the goal
+        	bool redBallApproaching(int radius){
+            		return (radius > 30);
+		}
+
+		bool redIsEmpty(){
+        		return objDist[RED] == 0.0;
+    		}
+
+	   	void trackBall(std::vector<cv::Vec3f> circleIMG, cv::Mat srcIMG)
+		{
+			if (isBlocking)
+			{
+				rotateGoalie(isBlockingOnLeft);
+				return;
+			}
+
+
+			if (circleIMG.empty())
+				objDist[RED] = 0.0;
+
+		    	else for (size_t i = 0; i < circleIMG.size(); i++){
+				// center coordinates of circle, and the radius
+			    	xCoord = static_cast<int>(round(circleIMG[i][0]));
+				yCoord = static_cast<int>(round(circleIMG[i][1]));
+				radius = static_cast<int>(round(circleIMG[i][2]));
+
+				objCoords[RED][0] = xCoord;
+				objCoords[RED][1] = yCoord;
+				objCoords[RED][2] = radius;
+
+				cv::Point center(xCoord, yCoord);
+
+				// draws circle around ball and cross-hair at center
+				cv::circle(srcIMG, center, radius, black, 2);
+				cv::line(srcIMG, center, center, black, 2);
+
+				objDist[RED] = distFromObj(radius);
+				
+				// move the turtlebot
+				moveTurtleBot();
+	    		}
+	    	}
+
+		//method to have the robot search for the ball and move toward it
+		void searchForBall(const sensor_msgs::ImageConstPtr& msg) {
+			
+            		cv_bridge::CvImagePtr cvPtr;
+            		std::vector<cv::Vec3f> circleIMG;
+            		cv::Mat srcIMG, hsvIMG, redIMG_lower, redIMG_upper, redIMG;
+			std::vector<cv::Vec3f> redCircleIMG;
+
+            		try {
+                		cvPtr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
+        			srcIMG = cvPtr->image;
+
+                		// converting color to HSV
+                		cv::cvtColor(srcIMG, hsvIMG, CV_BGR2HSV);
+
+                		// defining upper and lower red color range
+                		cv::inRange(hsvIMG, cv::Scalar(0, 100, 100), cv::Scalar(20, 255, 255), redIMG_lower);
+                		cv::inRange(hsvIMG, cv::Scalar(160, 100, 100), cv::Scalar(170, 255, 255), redIMG_upper);
+
+                		// weighting image and performing blur to reduce noise in image
+                		cv::addWeighted(redIMG_lower, 1.0, redIMG_upper, 1.0, 0.0, redIMG);
+                		cv::GaussianBlur(redIMG, redIMG, cv::Size(9, 9), 2, 2);
+
+                		// Hough gradient transform to find circles
+                		cv::HoughCircles(redIMG, redCircleIMG, CV_HOUGH_GRADIENT, 1, hsvIMG.rows / 8, 100, 20, MIN_RADIUS, MAX_RADIUS);
+            		}
+
+            		catch (cv_bridge::Exception &exception) {
+                		ROS_ERROR("cv_bridge exception: %s", exception.what());
+                		return;
+            		}
+
+            		trackBall(redCircleIMG, srcIMG);
+
+			// Update GUI Window
+			cv::imshow(OPENCV_WINDOW, cvPtr->image);
+			cv::waitKey(3);
+			// Output modified video stream1
+			imagePub_.publish(cvPtr->toImageMsg());
+        	}
+
+        	//method to send the ball to a specific location
+        	void moveToLocation(move_base_msgs::MoveBaseGoal goal) {
+		    	goalSet = true;
+        		mbcPub.publish(goal);
+		}	
+
+		move_base_msgs::MoveBaseGoal getStartingLocation() {
+		    	move_base_msgs::MoveBaseGoal startingLocation;
+		    	startingLocation.target_pose.header.frame_id = "base_link";
+  			startingLocation.target_pose.header.stamp = ros::Time::now();
+  			startingLocation.target_pose.pose.position.x = (goalLowerX + goalUpperX)/2.0;
+  			startingLocation.target_pose.pose.position.y = 1.0;
+			startingLocation.target_pose.pose.position.z = goaliePos.position.z;
+  			startingLocation.target_pose.pose.orientation.z = -1;
+            		return startingLocation;
+		}
+
+		//method where the robot decides which action to take (try to block goal or search for ball)
+        	void playSoccer(const sensor_msgs::ImageConstPtr &msg) {
+
+		    	if (!inGame) return;
+
+			searchForBall(msg);
+		}
+
+        	//method to handle game commands
+       		void gameCommandCallback(const std_msgs::String::ConstPtr &msg) {
+		    	//inGame = false;
+
+			ROS_INFO("In GC callback");
+			//inGame = true;
+
+			/*
+			if (strcmp(msg->data.c_str(), "start") == 0) inGame = true;
+
+		    	else if (strcmp(msg->data.c_str(), "stop") == 0) {
+		    		twistMsg.linear.x = 0;
+		    		twistMsg.angular.z = 0;
+				velPub.publish(twistMsg);
+	    		}
+		    
+		    	else if (strcmp(msg->data.c_str(), "field") == 0) {
+		    		//publish command to go to the field
+        			moveToLocation(getStartingLocation());
+			}
+
+			*/
+		}
+
+>>>>>>> 9d0860a08865a1a2a1a38134bbbcd79a807c7c5b
 };
 
 int main(int argc, char **argv)
