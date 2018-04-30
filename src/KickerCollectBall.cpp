@@ -143,82 +143,12 @@ class KickerRobot
         mbcPub.publish(goal);
     }
 
-    // method to actually kick the ball into the goal
-    // TODO: TEST THIS IN GAZEBO ONCE BALL "STICKS"
-    void kickBall()
-    {
-        ROS_INFO("Kicking ball");
-
-        isKickingBall = true;
-
-        if (!haveTurned) // , haveMovedBack, haveMovedForward
-        {
-            ROS_INFO("turning");
-            //determine if the goalie is on the left of the right of the image
-            bool onLeft = goalieOnLeft(objDist[BLUE]);
-
-            //set angular velocity based on goalie's position
-            twistMsg.angular.z = onLeft ? 0.5 : -0.5;
-            twistMsg.linear.x = 0;
-
-            //publish ths message
-            velPub.publish(twistMsg);
-
-            haveTurned = true;
-
-            return;
-        }
-
-        if (haveTurned && !haveMovedBack)
-        {
-            ROS_INFO("Moving back");
-            // move backward
-            twistMsg.linear.x = -0.5;
-            twistMsg.angular.z = 0;
-            velPub.publish(twistMsg);
-
-            haveMovedBack = true;
-            return;
-        }
-
-        if (haveTurned && haveMovedBack && !haveMovedForward)
-        {
-            ROS_INFO("moving foward quickly");
-            // move forward quickly
-            twistMsg.linear.x = 1.0;
-            twistMsg.angular.z = 0;
-            velPub.publish(twistMsg);
-            haveMovedForward = true;
-            return;
-        }
-
-        if (haveTurned && haveMovedBack && haveMovedForward)
-        {
-            ROS_INFO("moving forward");
-            haveTurned = false;
-            haveMovedBack = false;
-            haveMovedForward = false;
-            isKickingBall = false;
-            hasRedBall = false;
-
-            ROS_INFO("Ball has been kicked");
-
-            return;
-        }
-    }
-
     // method to have the robot move to the ball's location or look for the ball
     void moveTurtleBot(bool rotate = false, bool alignBlueBall = false)
     {
         if (goalSet)
         {
             ROS_INFO("A goal has been set, returning");
-            return;
-        }
-
-        if (isKickingBall)
-        {
-            kickBall();
             return;
         }
 
@@ -255,12 +185,14 @@ class KickerRobot
         {
             ROS_INFO("I have the red ball and can see the goal");
             // if you are far away from the goal, move toward it. otherwise, try to kick the ball
-            if (objDist[BLUE] > 2.5)
-                twistMsg.linear.x = 0.3 * objDist[BLUE];
+            if (objDist[BLUE] > 1.5)
+                twistMsg.linear.x = MAX_BOT_VEL;
 
             else
-		ROS_INFO("I want to kick the ball now");
-                //kickBall();
+            {
+                twistMsg.linear.x = 0.0;
+                // inGame = false? // to be tested
+            }
         }
 
         if (twistMsg.linear.x > MAX_BOT_VEL)
@@ -300,21 +232,21 @@ class KickerRobot
         isEmpty[color] = circleIMG.empty();
 
         if (isEmpty[color])
-	{
-		if (color == RED && objDist[RED] <= 0.5 && objDist[RED] != 0.0)
-		{
-			hasRedBall = true;
-			isEmpty[RED] = false;
-			ROS_INFO("GOT DAT RED BALL, YO");
-			return;
-		}
-		else
-		{
-			objDist[color] = 0.0;
-			if (color == BLUE)
-				moveTurtleBot(true);
-		}
-	}
+        {
+            if (color == RED && objDist[RED] <= 0.5 && objDist[RED] != 0.0)
+            {
+                hasRedBall = true;
+                isEmpty[RED] = false;
+                ROS_INFO("GOT DAT RED BALL, YO");
+                return;
+            }
+            else
+            {
+                objDist[color] = 0.0;
+                if (color == BLUE)
+                    moveTurtleBot(true);
+            }
+        }
 
         // if we don't have the red ball and the image does not contain red, rotate the TurtleBot until red ball is found
         if (color == RED && isEmpty[RED] && !hasRedBall)
@@ -353,8 +285,8 @@ class KickerRobot
 
                     // if the blue ball is close to the center of the frame, move turtlebot
                     if (objCoord[BLUE][X] <= MID_X_HIGH && objCoord[BLUE][X] >= MID_X_LOW)
-			ROS_INFO("I AM ALIGNED WITH THE BLUE BALL");
-                        //moveTurtleBot();
+                        ROS_INFO("I AM ALIGNED WITH THE BLUE BALL");
+                    //moveTurtleBot();
                 }
 
                 // for easy debugging in Gazebo, please wait until final code is pushed to delete
@@ -433,9 +365,9 @@ class KickerRobot
         }
 
         if (!hasRedBall)
-	{
+        {
             trackBall(redCircleIMG, srcIMG, RED);
-	}
+        }
 
         else
             trackBall(blueCircleIMG, srcIMG, BLUE);
