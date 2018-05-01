@@ -297,7 +297,7 @@ class KickerRobot
         cv_bridge::CvImagePtr cvPtr;
         cv_bridge::CvImagePtr cvGrayPtr;
         std::vector<cv::Vec3f> circleIMG, redCircleIMG, blueCircleIMG;
-        cv::Mat srcIMG, hsvIMG, redIMG_lower, redIMG_upper, redIMG, blueIMG_lower, blueIMG_upper, blueIMG;
+        cv::Mat srcIMG, hsvIMG, redIMG_lower, redIMG_upper, redIMG, blueIMG_lower, blueIMG_upper, blueIMG, greenRange;
 
         cv::Scalar black = (0, 255, 5);    // RGB color for circle to be drawn on image
         cv::Scalar blue = (200, 200, 250); // RGB color for text displayed on image
