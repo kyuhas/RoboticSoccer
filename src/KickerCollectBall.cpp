@@ -93,8 +93,8 @@ class KickerRobot
         timeCounter = 0;
 
         // for testing purposes only
-        inGame = true;
-        //inGame = false;
+        //inGame = true;
+        inGame = false;
 
         // initialize booleans because C++ does not do this for us
         isKickingBall = false;
@@ -207,22 +207,6 @@ class KickerRobot
         // robot linear and angular velocity rounded to the nearest 100th
         botVelX = floor((msg->twist.twist.linear.x * 100 + 0.5)) / 100;
         botAngZ = floor((msg->twist.twist.angular.z * 100 + 0.5)) / 100;
-    }
-
-    // returns true if goalie on kicker's left side of goal
-    // returns false if goalie on kicker's right side of goal
-    bool goalieOnLeft(double dist)
-    {
-        ROS_INFO("Checking to see which side the goalie is on");
-        // get the robot's orientation in radians
-        double theta = 2 * acos(kickerPos.orientation.w);
-        double dx = dist * cos(theta);
-        double dy = dist * sin(theta);
-        double goalieXPos = kickerPos.position.x + dx;
-        double goalieYPos = kickerPos.position.y + dy;
-
-        // we will determine if the ball if coming in from the left or right based on the ballYPos
-        return goalieYPos < goalCenterY;
     }
 
     // method to track the ball
@@ -404,7 +388,7 @@ class KickerRobot
     // method to handle game commands
     void gameCommandCallback(const std_msgs::String::ConstPtr &msg)
     {
-        /*
+        
         inGame = false;
 
         if (strcmp(msg->data.c_str(), "start") == 0)
@@ -422,7 +406,7 @@ class KickerRobot
             move_base_msgs::MoveBaseGoal startingLocation = getStartingLocation();
             moveToLocation(startingLocation);
         }
-        */
+        
     }
 };
 
