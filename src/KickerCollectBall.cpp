@@ -34,8 +34,8 @@
 #define R 2
 #define MIN_RADIUS 0
 #define MAX_RADIUS 0
-#define MID_X_LOW 310
-#define MID_X_HIGH 330
+#define MID_X_LOW 270
+#define MID_X_HIGH 380
 
 // constant time for how frequently to check if the ball is still there
 const int NUM_SECONDS = 5;
@@ -64,7 +64,7 @@ class KickerRobot
     geometry_msgs::Twist twistMsg;
     geometry_msgs::Pose kickerPos;
 
-    double alignErrorRed = 0.0, alignErrorBlue = 0.0, botVelX = 0.0, botAngZ = 0.0;
+    double alignError = 0.0, alignErrorBlue = 0.0, botVelX = 0.0, botAngZ = 0.0;
 
     cv::Scalar black = (0, 255, 5), blue = (200, 200, 250);          // RGB color for circle to be drawn on image
     std::vector<double> objDist = {0.0, 0.0};                        // RED, BLUE in that order
@@ -92,8 +92,8 @@ class KickerRobot
         timeCounter = 0;
 
         // for testing purposes only
-        //inGame = true;
-        inGame = false;
+        inGame = true;
+        //inGame = false;
 
         // initialize booleans because C++ does not do this for us
         isKickingBall = false;
@@ -138,20 +138,13 @@ class KickerRobot
             return;
         }
 
-        twistMsg.angular.z = -alignErrorRed / 225.0; // 225 worked well as a denominator to smooth the alignment
+        twistMsg.angular.z = -alignError / 225.0; // 225 worked well as a denominator to smooth the alignment
 
         if (rotate)
         {
             twistMsg.angular.z = 0.5;
             twistMsg.linear.x = 0.0;
-            //ROS_INFO("I am rotating");
-        }
-
-        else if (alignBlueBall)
-        {
-            twistMsg.angular.z = -alignErrorBlue / 225.0;
-            twistMsg.linear.x = 0.0;
-            //ROS_INFO("Rotating so that I am centered on blue ball");
+            ROS_INFO("I am rotating");
         }
 
         else if (!hasRedBall)
@@ -171,8 +164,11 @@ class KickerRobot
         {
             ROS_INFO("I have the red ball and can see the goal");
             // if you are far away from the goal, move toward it. otherwise, try to kick the ball
-            if (objDist[BLUE] > 1.5)
+            if (objDist[BLUE] > 2.0)
+	    {
+		//twistMsg.angular.z = 0;
                 twistMsg.linear.x = MAX_BOT_VEL;
+	    }
 
             else
 	    {
@@ -216,7 +212,10 @@ class KickerRobot
             {
                 objDist[color] = 0.0;
                 if (color == BLUE)
+		{
+		    ROS_INFO("no green balls");
                     moveTurtleBot(true);
+		}
             }
         }
 
@@ -244,7 +243,7 @@ class KickerRobot
                 if (color == RED)
                 {
                     // we do not have the red ball - go to it
-                    alignErrorRed = objCoord[RED][X] - (IMG_WIDTH_PX / 2.0);
+                    alignError = objCoord[RED][X] - (IMG_WIDTH_PX / 2.0);
                     moveTurtleBot();
                 }
 
@@ -252,18 +251,22 @@ class KickerRobot
                 {
                     ROS_INFO("i see a blue circle. deciding what to do.");
                     // kicker has the red ball -- now make sure that we are centered on blue ball
-                    alignErrorBlue = objCoord[BLUE][X] - (IMG_WIDTH_PX / 2.0);
-                    moveTurtleBot(false, true);
+                    alignError = objCoord[BLUE][X] - (IMG_WIDTH_PX / 2.0);
+                    moveTurtleBot();
 
                     // if the blue ball is close to the center of the frame, move turtlebot
+		    /*
                     if (objCoord[BLUE][X] <= MID_X_HIGH && objCoord[BLUE][X] >= MID_X_LOW)
+		    {
                         ROS_INFO("I AM ALIGNED WITH THE BLUE BALL");
-                    //moveTurtleBot();
+                        moveTurtleBot();
+		    }
+		    */
                 }
 
                 // for easy debugging in Gazebo, please wait until final code is pushed to delete
                 std::stringstream ssRedDist, ssBlueDist, ssBotVelX, ssAlignError, ssBotOrient, ssBotPosX, ssBotPosY;
-                ssAlignError << alignErrorRed;
+                ssAlignError << alignError;
                 ssRedDist << objDist[RED];
                 ssBlueDist << objDist[BLUE];
                 ssBotVelX << botVelX;
@@ -344,7 +347,7 @@ class KickerRobot
         }
 
         else
-            trackBall(blueCircleIMG, srcIMG, BLUE);
+            trackBall(blueCircleIMG, blueIMG, BLUE);
 
         // Update GUI Window and publish modified stream
         cv::imshow(OPENCV_WINDOW, cvPtr->image);
@@ -378,7 +381,7 @@ class KickerRobot
     // method to handle game commands
     void gameCommandCallback(const std_msgs::String::ConstPtr &msg)
     {
-        
+        /*
         inGame = false;
 
         if (strcmp(msg->data.c_str(), "start") == 0)
@@ -396,7 +399,7 @@ class KickerRobot
             move_base_msgs::MoveBaseGoal startingLocation = getStartingLocation();
             moveToLocation(startingLocation);
         }
-        
+        */
     }
 };
 
