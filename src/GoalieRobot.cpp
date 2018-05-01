@@ -119,12 +119,6 @@ class GoalieRobot
             void setPose(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msg)
             {
                 goaliePos = msg->pose.pose;
-                /*
-			        if(goaliePos.position.x < goalLowerX || goaliePos.position.x > goalUpperX
-				        || goaliePos.position.y < goalLowerY || goaliePos.position.y > goalUpperY) {
-				        moveToLocation(getStartingLocation());
-			        }
-			        */
             }
 
             void rotateGoalie(bool rotateLeft = false)
@@ -242,7 +236,7 @@ class GoalieRobot
             void moveTurtleBot()
             {
                 // tune this value later
-                if (objDist[RED] <= 1.5 && objDist[RED] > 0.0) //make sure it isn't counting empty images
+                if (objDist[RED] <= 2.0 && objDist[RED] > 0.7) //make sure it isn't counting empty images
                 {
                     // see which side the red ball is on
                     isBlocking = true;
@@ -369,25 +363,6 @@ class GoalieRobot
                 imagePub_.publish(cvPtr->toImageMsg());
             }
 
-            //method to send the ball to a specific location
-            void moveToLocation(move_base_msgs::MoveBaseGoal goal)
-            {
-                goalSet = true;
-                mbcPub.publish(goal);
-            }
-
-            move_base_msgs::MoveBaseGoal getStartingLocation()
-            {
-                move_base_msgs::MoveBaseGoal startingLocation;
-                startingLocation.target_pose.header.frame_id = "base_link";
-                startingLocation.target_pose.header.stamp = ros::Time::now();
-                startingLocation.target_pose.pose.position.x = (goalLowerX + goalUpperX) / 2.0;
-                startingLocation.target_pose.pose.position.y = 1.0;
-                startingLocation.target_pose.pose.position.z = goaliePos.position.z;
-                startingLocation.target_pose.pose.orientation.z = -1;
-                return startingLocation;
-            }
-
             //method where the robot decides which action to take (try to block goal or search for ball)
             void playSoccer(const sensor_msgs::ImageConstPtr &msg)
             {
@@ -417,11 +392,6 @@ class GoalieRobot
                     velPub.publish(twistMsg);
                 }
 
-                else if (strcmp(msg->data.c_str(), "field") == 0)
-                {
-                    //publish command to go to the field
-                    moveToLocation(getStartingLocation());
-                }
                 */
             }
 };
