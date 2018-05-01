@@ -55,7 +55,6 @@ class KickerRobot
     image_transport::Publisher imagePub_;
     ros::Subscriber gameSub_ = nodeHandle_.subscribe("/gameCommands", 10, &KickerRobot::gameCommandCallback, this);
     ros::Subscriber odomSub_ = nodeHandle_.subscribe("/odom", 1000, &KickerRobot::odomCallback, this);
-    ros::Subscriber amclSub_ = nodeHandle_.subscribe("/amcl_pose", 10, &KickerRobot::amclPoseCallback, this);
     ros::Subscriber mbcSub = nodeHandle_.subscribe("/move_base_controller_result", 10, &KickerRobot::mbControllerResultCallback, this);
     ros::Publisher velPub = nodeHandle_.advertise<geometry_msgs::Twist>("/cmd_vel_mux/input/teleop", 1);
     ros::Publisher mbcPub = nodeHandle_.advertise<move_base_msgs::MoveBaseGoal>("/goal_location", 1);
@@ -120,99 +119,12 @@ class KickerRobot
             goalSet = false;
     }
 
-    // method to set the pose of the kicker robot. If it gets too close to the goalie, make it go backwards.
-    // TODO: maybe also add a check if it gets too close to any walls?
-    void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msg)
-    {
-        kickerPos = msg->pose.pose;
-
-        if (kickerPos.position.x < goalUpperX + 1.0)
-        {
-            // TODO: uncomment once debugging is done
-            //twistMsg.linear.x = -0.5;
-            //velPub.publish(twistMsg);
-        }
-    }
 
     // method to send the ball to a specific location
     void moveToLocation(move_base_msgs::MoveBaseGoal goal)
     {
         goalSet = true;
         mbcPub.publish(goal);
-    }
-
-    void kickBall()
-    {
-	isKickingBall = true;
-
-
-	isKickingBall = false;
-
-
-    }
-
-    // method to actually kick the ball into the goal
-    // TODO: TEST THIS IN GAZEBO ONCE BALL "STICKS"
-    void kickBall2()
-    {
-        ROS_INFO("Kicking ball");
-
-        isKickingBall = true;
-
-        if (!haveTurned) // , haveMovedBack, haveMovedForward
-        {
-            ROS_INFO("turning");
-            //determine if the goalie is on the left of the right of the image
-            bool onLeft = goalieOnLeft(objDist[BLUE]);
-
-            //set angular velocity based on goalie's position
-            twistMsg.angular.z = onLeft ? 0.5 : -0.5;
-            twistMsg.linear.x = 0;
-
-            //publish ths message
-            velPub.publish(twistMsg);
-
-            haveTurned = true;
-
-            return;
-        }
-
-        if (haveTurned && !haveMovedBack)
-        {
-            ROS_INFO("Moving back");
-            // move backward
-            twistMsg.linear.x = -0.5;
-            twistMsg.angular.z = 0;
-            velPub.publish(twistMsg);
-
-            haveMovedBack = true;
-            return;
-        }
-
-        if (haveTurned && haveMovedBack && !haveMovedForward)
-        {
-            ROS_INFO("moving foward quickly");
-            // move forward quickly
-            twistMsg.linear.x = 1.0;
-            twistMsg.angular.z = 0;
-            velPub.publish(twistMsg);
-            haveMovedForward = true;
-            return;
-        }
-
-        if (haveTurned && haveMovedBack && haveMovedForward)
-        {
-            ROS_INFO("moving forward");
-            haveTurned = false;
-            haveMovedBack = false;
-            haveMovedForward = false;
-            isKickingBall = false;
-            hasRedBall = false;
-
-            ROS_INFO("Ball has been kicked");
-
-            return;
-        }
     }
 
     // method to have the robot move to the ball's location or look for the ball
@@ -224,11 +136,6 @@ class KickerRobot
             return;
         }
 
-        if (isKickingBall)
-        {
-            kickBall();
-            return;
-        }
 
         twistMsg.angular.z = -alignErrorRed / 225.0; // 225 worked well as a denominator to smooth the alignment
 
@@ -263,8 +170,9 @@ class KickerRobot
 	    {
 		twistMsg.linear.x = 0;
 		twistMsg.angular.z = 0;
+		inGame = false;
+		ROS_INFO("game is over");
 	    }
-                //kickBall();
         }
 
         if (twistMsg.linear.x > MAX_BOT_VEL)
@@ -281,21 +189,6 @@ class KickerRobot
         botAngZ = floor((msg->twist.twist.angular.z * 100 + 0.5)) / 100;
     }
 
-    // returns true if goalie on kicker's left side of goal
-    // returns false if goalie on kicker's right side of goal
-    bool goalieOnLeft(double dist)
-    {
-        ROS_INFO("Checking to see which side the goalie is on");
-        // get the robot's orientation in radians
-        double theta = 2 * acos(kickerPos.orientation.w);
-        double dx = dist * cos(theta);
-        double dy = dist * sin(theta);
-        double goalieXPos = kickerPos.position.x + dx;
-        double goalieYPos = kickerPos.position.y + dy;
-
-        // we will determine if the ball if coming in from the left or right based on the ballYPos
-        return goalieYPos < goalCenterY;
-    }
 
     // method to track the ball
     void trackBall(std::vector<cv::Vec3f> circleIMG, cv::Mat srcIMG, int color)
@@ -425,7 +318,7 @@ class KickerRobot
                 //cv::inRange(hsvIMG, cv::Scalar(60, 100, 100), cv::Scalar(80, 255, 255), blueIMG_lower);
                 //cv::inRange(hsvIMG, cv::Scalar(100, 100, 100), cv::Scalar(120, 255, 255), blueIMG_upper);
                 
-		cv::inRange(hsvIMG, cv::Scalar(50, 100, 100), cv::Scalar(70, 255, 255), greenRange);
+		cv::inRange(hsvIMG, cv::Scalar(45, 100, 100), cv::Scalar(75, 255, 255), greenRange);
                 //cv::inRange(hsvIMG, cv::Scalar(100, 100, 100), cv::Scalar(120, 255, 255), blueIMG_upper);
                 //cv::addWeighted(blueIMG_lower, 1.0, blueIMG_upper, 1.0, 0.0, blueIMG);
 		cv::addWeighted(greenRange, 1.0, greenRange, 1.0, 0.0, blueIMG);
