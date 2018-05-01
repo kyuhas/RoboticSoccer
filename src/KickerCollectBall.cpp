@@ -57,7 +57,6 @@ class KickerRobot
     image_transport::Publisher imagePub_;
     ros::Subscriber gameSub_ = nodeHandle_.subscribe("/gameCommands", 10, &KickerRobot::gameCommandCallback, this);
     ros::Subscriber odomSub_ = nodeHandle_.subscribe("/odom", 1000, &KickerRobot::odomCallback, this);
-    ros::Subscriber amclSub_ = nodeHandle_.subscribe("/amcl_pose", 10, &KickerRobot::amclPoseCallback, this);
     ros::Subscriber mbcSub = nodeHandle_.subscribe("/move_base_controller_result", 10, &KickerRobot::mbControllerResultCallback, this);
     ros::Publisher velPub = nodeHandle_.advertise<geometry_msgs::Twist>("/cmd_vel_mux/input/teleop", 1);
     ros::Publisher mbcPub = nodeHandle_.advertise<move_base_msgs::MoveBaseGoal>("/goal_location", 1);
@@ -122,19 +121,6 @@ class KickerRobot
             goalSet = false;
     }
 
-    // method to set the pose of the kicker robot. If it gets too close to the goalie, make it go backwards.
-    // TODO: maybe also add a check if it gets too close to any walls?
-    void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msg)
-    {
-        kickerPos = msg->pose.pose;
-
-        if (kickerPos.position.x < goalUpperX + 1.0)
-        {
-            // TODO: uncomment once debugging is done
-            //twistMsg.linear.x = -0.5;
-            //velPub.publish(twistMsg);
-        }
-    }
 
     // method to send the ball to a specific location
     void moveToLocation(move_base_msgs::MoveBaseGoal goal)
@@ -189,10 +175,12 @@ class KickerRobot
                 twistMsg.linear.x = MAX_BOT_VEL;
 
             else
-            {
-                twistMsg.linear.x = 0.0;
-                // inGame = false? // to be tested
-            }
+	    {
+		twistMsg.linear.x = 0;
+		twistMsg.angular.z = 0;
+		inGame = false;
+		ROS_INFO("game is over");
+	    }
         }
 
         if (twistMsg.linear.x > MAX_BOT_VEL)
@@ -336,8 +324,8 @@ class KickerRobot
             {
                 //cv::inRange(hsvIMG, cv::Scalar(60, 100, 100), cv::Scalar(80, 255, 255), blueIMG_lower);
                 //cv::inRange(hsvIMG, cv::Scalar(100, 100, 100), cv::Scalar(120, 255, 255), blueIMG_upper);
-                //cv::addWeighted(blueIMG_lower, 1.0, blueIMG_upper, 1.0, 0.0, blueIMG);
-                cv::inRange(hsvIMG, cv::Scalar(50, 100, 100), cv::Scalar(70, 255, 255), greenRange);
+
+		cv::inRange(hsvIMG, cv::Scalar(45, 100, 100), cv::Scalar(75, 255, 255), greenRange);
                 cv::addWeighted(greenRange, 1.0, greenRange, 1.0, 0.0, blueIMG);
                 cv::GaussianBlur(blueIMG, blueIMG, cv::Size(9, 9), 2, 2);
                 cv::HoughCircles(blueIMG, blueCircleIMG, CV_HOUGH_GRADIENT, 1, hsvIMG.rows / 8, 100, 20, MIN_RADIUS, MAX_RADIUS);
