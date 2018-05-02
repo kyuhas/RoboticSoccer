@@ -218,7 +218,7 @@ class KickerRobot
 
             else
             {
-				cv::inRange(hsvIMG, cv::Scalar(45, 100, 100), cv::Scalar(75, 255, 255), greenRange);
+		cv::inRange(hsvIMG, cv::Scalar(45, 100, 100), cv::Scalar(75, 255, 255), greenRange);
                 cv::addWeighted(greenRange, 1.0, greenRange, 1.0, 0.0, greenIMG);
                 cv::GaussianBlur(greenIMG, greenIMG, cv::Size(9, 9), 2, 2);
                 cv::HoughCircles(greenIMG, greenCircleIMG, CV_HOUGH_GRADIENT, 1, hsvIMG.rows / 8, 100, 20, MIN_RADIUS, MAX_RADIUS);

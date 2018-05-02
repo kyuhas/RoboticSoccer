@@ -22,6 +22,4 @@
   <node name="move_base_controller" pkg="final_project" type="move_base_controller.py" />
 
   <node name="goalie" pkg="final_project" type="goalie_robot" />
-
-
 </launch>
