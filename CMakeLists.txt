@@ -138,7 +138,6 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(kicker_robot src/kickerRobotGeneral.cpp)
 add_executable(goalie_robot src/GoalieRobot.cpp)
 add_executable(kicker_collect_ball src/KickerCollectBall.cpp)
 
@@ -147,7 +146,6 @@ add_executable(kicker_collect_ball src/KickerCollectBall.cpp)
 ## target back to the shorter version for ease of user use
 ## e.g. "rosrun someones_pkg node" instead of "rosrun someones_pkg someones_pkg_node"
 # set_target_properties(${PROJECT_NAME}_node PROPERTIES OUTPUT_NAME node PREFIX "")
-target_link_libraries(kicker_robot ${OpenCV_LIBRARIES} ${catkin_LIBRARIES} )
 target_link_libraries(goalie_robot ${OpenCV_LIBRARIES} ${catkin_LIBRARIES} )
 target_link_libraries(kicker_collect_ball ${OpenCV_LIBRARIES} ${catkin_LIBRARIES} )
 
