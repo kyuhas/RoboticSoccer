@@ -28,7 +28,7 @@
 #define MAX_BOT_VEL 0.65           // max speed TurtleBot is capable of
 #define MIN_BOT_VEL 0.2            // the min speed I want the TurtleBot to go
 #define RED 0
-#define BLUE 1
+#define GREEN 1
 #define X 0
 #define Y 1
 #define R 2
@@ -36,16 +36,6 @@
 #define MAX_RADIUS 0
 #define MID_X_LOW 270
 #define MID_X_HIGH 380
-
-// constant time for how frequently to check if the ball is still there
-const int NUM_SECONDS = 5;
-
-// constants based on the position of the goal
-const double goalLowerX = 0.1;
-const double goalUpperX = 0.9;
-const double goalLowerY = 1.2;
-const double goalUpperY = 3.0;
-const double goalCenterY = (goalUpperY + goalLowerY) / 2.0;
 
 static const std::string OPENCV_WINDOW = "Image window";
 
@@ -56,53 +46,28 @@ class KickerRobot
     image_transport::Subscriber imageSub_;
     image_transport::Publisher imagePub_;
     ros::Subscriber gameSub_ = nodeHandle_.subscribe("/gameCommands", 10, &KickerRobot::gameCommandCallback, this);
-    ros::Subscriber odomSub_ = nodeHandle_.subscribe("/odom", 1000, &KickerRobot::odomCallback, this);
-    ros::Subscriber mbcSub = nodeHandle_.subscribe("/move_base_controller_result", 10, &KickerRobot::mbControllerResultCallback, this);
     ros::Publisher velPub = nodeHandle_.advertise<geometry_msgs::Twist>("/cmd_vel_mux/input/teleop", 1);
-    ros::Publisher mbcPub = nodeHandle_.advertise<move_base_msgs::MoveBaseGoal>("/goal_location", 1);
 
     geometry_msgs::Twist twistMsg;
-    geometry_msgs::Pose kickerPos;
 
-    double alignError = 0.0, alignErrorBlue = 0.0, botVelX = 0.0, botAngZ = 0.0;
+    double alignError = 0.0;
 
     cv::Scalar black = (0, 255, 5), blue = (200, 200, 250);          // RGB color for circle to be drawn on image
-    std::vector<double> objDist = {0.0, 0.0};                        // RED, BLUE in that order
-    std::vector<std::vector<int>> objCoord = {{0, 0, 0}, {0, 0, 0}}; // RED, BLUE, in that order
-    std::vector<bool> isEmpty = {false, false};                      // RED, BLUE, in that order
-    bool isKickingBall, inGame, goalSet, hasRedBall, haveTurned, haveMovedBack, haveMovedForward;
-
-    clock_t thisTime, lastTime;
-    double timeCounter;
+    std::vector<double> objDist = {0.0, 0.0};                        // RED, GREEN in that order
+    std::vector<std::vector<int>> objCoord = {{0, 0, 0}, {0, 0, 0}}; // RED, GREEN, in that order
+    std::vector<bool> isEmpty = {false, false};                      // RED, GREEN, in that order
+    bool inGame, hasRedBall;
 
   public:
     // constructor
     KickerRobot() : imageTransport_(nodeHandle_)
     {
-        // real camera
         imageSub_ = imageTransport_.subscribe("/usb_cam/image_raw", 10, &KickerRobot::playSoccer, this);
-
-        // camera used for simulation
-        //imageSub_ = imageTransport_.subscribe("/camera/rgb/image_raw", 10, &KickerRobot::playSoccer, this);
         imagePub_ = imageTransport_.advertise("/image_converter/output_video", 10);
 
-        // initialize clock vars
-        thisTime = clock();
-        lastTime = thisTime;
-        timeCounter = 0;
-
-        // for testing purposes only
-        inGame = true;
-        //inGame = false;
-
         // initialize booleans because C++ does not do this for us
-        isKickingBall = false;
-
-        goalSet = false;
-        haveTurned = false;
-        haveMovedBack = false;
-        haveMovedForward = false;
         hasRedBall = false;
+	inGame = false;
     }
     // destructor
     ~KickerRobot() {}
@@ -114,57 +79,32 @@ class KickerRobot
         return floor((distMeters * 10 + 0.5)) / 10;
     }
 
-    // if we have reached our goal, goalSet is now false
-    void mbControllerResultCallback(const std_msgs::String::ConstPtr &msg)
-    {
-        if (goalSet && strcmp(msg->data.c_str(), "true") == 0)
-            goalSet = false;
-    }
-
-
-    // method to send the ball to a specific location
-    void moveToLocation(move_base_msgs::MoveBaseGoal goal)
-    {
-        goalSet = true;
-        mbcPub.publish(goal);
-    }
-
     // method to have the robot move to the ball's location or look for the ball
-    void moveTurtleBot(bool rotate = false, bool alignBlueBall = false)
+    void moveTurtleBot(bool rotate = false)
     {
-        if (goalSet)
-        {
-            ROS_INFO("A goal has been set, returning");
-            return;
-        }
-
         twistMsg.angular.z = -alignError / 225.0; // 225 worked well as a denominator to smooth the alignment
 
         if (rotate)
         {
             twistMsg.angular.z = 0.5;
             twistMsg.linear.x = 0.0;
-            ROS_INFO("I am rotating");
         }
 
         else if (!hasRedBall)
         {
             twistMsg.linear.x = (0.3 * objDist[RED]);
-            ROS_INFO("Going to get the red ball.");
         }
 
-        else if (hasRedBall && isEmpty[BLUE])
+        else if (hasRedBall && isEmpty[GREEN])
         {
-            ROS_INFO("Looking for the blue ball");
             twistMsg.angular.z = 0.2;
             twistMsg.linear.x = 0.0;
         }
 
-        else if (hasRedBall && !isEmpty[BLUE])
+        else if (hasRedBall && !isEmpty[GREEN])
         {
-            ROS_INFO("I have the red ball and can see the goal");
             // if you are far away from the goal, move toward it. otherwise, try to kick the ball
-            if (objDist[BLUE] > 2.5)
+            if (objDist[GREEN] > 2.5)
 	    {
 		//twistMsg.angular.z = 0;
                 twistMsg.linear.x = MAX_BOT_VEL;
@@ -175,7 +115,6 @@ class KickerRobot
 		twistMsg.linear.x = 0;
 		twistMsg.angular.z = 0;
 		inGame = false;
-		ROS_INFO("game is over");
 	    }
         }
 
@@ -183,14 +122,6 @@ class KickerRobot
             twistMsg.linear.x = MAX_BOT_VEL;
 
         velPub.publish(twistMsg);
-    }
-
-    // method to get the current velocity of the robot
-    void odomCallback(const nav_msgs::Odometry::ConstPtr &msg)
-    {
-        // robot linear and angular velocity rounded to the nearest 100th
-        botVelX = floor((msg->twist.twist.linear.x * 100 + 0.5)) / 100;
-        botAngZ = floor((msg->twist.twist.angular.z * 100 + 0.5)) / 100;
     }
 
     // method to track the ball
@@ -205,15 +136,13 @@ class KickerRobot
             {
                 hasRedBall = true;
                 isEmpty[RED] = false;
-                ROS_INFO("GOT DAT RED BALL, YO");
                 return;
             }
             else
             {
                 objDist[color] = 0.0;
-                if (color == BLUE)
+                if (color == GREEN)
 		{
-		    ROS_INFO("no green balls");
                     moveTurtleBot(true);
 		}
             }
@@ -249,58 +178,22 @@ class KickerRobot
 
                 else
                 {
-                    ROS_INFO("i see a blue circle. deciding what to do.");
-                    // kicker has the red ball -- now make sure that we are centered on blue ball
-                    alignError = objCoord[BLUE][X] - (IMG_WIDTH_PX / 2.0);
+                    // kicker has the red ball -- now make sure that we are centered on green ball
+                    alignError = objCoord[GREEN][X] - (IMG_WIDTH_PX / 2.0);
                     moveTurtleBot();
-
-                    // if the blue ball is close to the center of the frame, move turtlebot
-		    /*
-                    if (objCoord[BLUE][X] <= MID_X_HIGH && objCoord[BLUE][X] >= MID_X_LOW)
-		    {
-                        ROS_INFO("I AM ALIGNED WITH THE BLUE BALL");
-                        moveTurtleBot();
-		    }
-		    */
                 }
-
-                // for easy debugging in Gazebo, please wait until final code is pushed to delete
-                std::stringstream ssRedDist, ssBlueDist, ssBotVelX, ssAlignError, ssBotOrient, ssBotPosX, ssBotPosY;
-                ssAlignError << alignError;
-                ssRedDist << objDist[RED];
-                ssBlueDist << objDist[BLUE];
-                ssBotVelX << botVelX;
-                ssBotOrient << kickerPos.orientation.w;
-                ssBotPosX << kickerPos.position.x;
-                ssBotPosY << kickerPos.position.y;
-
-                std::string alignErrStr = "    ALN_ERR: " + ssAlignError.str() + " px";
-                std::string redDistStr = "    RED_DST: " + ssRedDist.str() + " m";
-                std::string blueDistStr = "    BLU_DST: " + ssBlueDist.str() + " m";
-                std::string botVelStr = "    BOT_VEL: " + ssBotVelX.str() + " m/s";
-                std::string botPosXStr = "    POS__X: " + ssBotPosX.str();
-                std::string botPosYStr = "    POS__Y: " + ssBotPosY.str();
-                std::string botOrientStr = "    POS__W: " + ssBotOrient.str();
-
-                cv::putText(srcIMG, alignErrStr, cv::Point(350, 325), cv::FONT_HERSHEY_SIMPLEX, 0.5, blue, 1, CV_AA);
-                cv::putText(srcIMG, redDistStr, cv::Point(350, 350), cv::FONT_HERSHEY_SIMPLEX, 0.5, blue, 1, CV_AA);
-                cv::putText(srcIMG, blueDistStr, cv::Point(350, 375), cv::FONT_HERSHEY_SIMPLEX, 0.5, blue, 1, CV_AA);
-                cv::putText(srcIMG, botVelStr, cv::Point(350, 400), cv::FONT_HERSHEY_SIMPLEX, 0.5, blue, 1, CV_AA);
-                cv::putText(srcIMG, botPosXStr, cv::Point(350, 450), cv::FONT_HERSHEY_SIMPLEX, 0.5, blue, 1, CV_AA);
-                cv::putText(srcIMG, botPosYStr, cv::Point(350, 475), cv::FONT_HERSHEY_SIMPLEX, 0.5, blue, 1, CV_AA);
-                cv::putText(srcIMG, botOrientStr, cv::Point(350, 425), cv::FONT_HERSHEY_SIMPLEX, 0.5, blue, 1, CV_AA);
             }
         }
     }
 
-    // method to have the robot see if it can find either the red or blue ball
+    // method to have the robot see if it can find either the red or green ball
     void searchForBall(const sensor_msgs::ImageConstPtr &msg)
     {
 
         cv_bridge::CvImagePtr cvPtr;
         cv_bridge::CvImagePtr cvGrayPtr;
-        std::vector<cv::Vec3f> circleIMG, redCircleIMG, blueCircleIMG;
-        cv::Mat srcIMG, hsvIMG, redIMG_lower, redIMG_upper, redIMG, blueIMG_lower, blueIMG_upper, blueIMG, greenRange;
+        std::vector<cv::Vec3f> circleIMG, redCircleIMG, greenCircleIMG;
+        cv::Mat srcIMG, hsvIMG, redIMG_lower, redIMG_upper, redIMG, greenIMG_lower, greenIMG_upper, greenIMG, greenRange;
 
         cv::Scalar black = (0, 255, 5);    // RGB color for circle to be drawn on image
         cv::Scalar blue = (200, 200, 250); // RGB color for text displayed on image
@@ -325,13 +218,10 @@ class KickerRobot
 
             else
             {
-                //cv::inRange(hsvIMG, cv::Scalar(60, 100, 100), cv::Scalar(80, 255, 255), blueIMG_lower);
-                //cv::inRange(hsvIMG, cv::Scalar(100, 100, 100), cv::Scalar(120, 255, 255), blueIMG_upper);
-
 		cv::inRange(hsvIMG, cv::Scalar(45, 100, 100), cv::Scalar(75, 255, 255), greenRange);
-                cv::addWeighted(greenRange, 1.0, greenRange, 1.0, 0.0, blueIMG);
-                cv::GaussianBlur(blueIMG, blueIMG, cv::Size(9, 9), 2, 2);
-                cv::HoughCircles(blueIMG, blueCircleIMG, CV_HOUGH_GRADIENT, 1, hsvIMG.rows / 8, 100, 20, MIN_RADIUS, MAX_RADIUS);
+                cv::addWeighted(greenRange, 1.0, greenRange, 1.0, 0.0, greenIMG);
+                cv::GaussianBlur(greenIMG, greenIMG, cv::Size(9, 9), 2, 2);
+                cv::HoughCircles(greenIMG, greenCircleIMG, CV_HOUGH_GRADIENT, 1, hsvIMG.rows / 8, 100, 20, MIN_RADIUS, MAX_RADIUS);
             }
         }
 
@@ -347,26 +237,12 @@ class KickerRobot
         }
 
         else
-            trackBall(blueCircleIMG, blueIMG, BLUE);
+            trackBall(greenCircleIMG, greenIMG, GREEN);
 
         // Update GUI Window and publish modified stream
         cv::imshow(OPENCV_WINDOW, cvPtr->image);
         cv::waitKey(3);
         imagePub_.publish(cvPtr->toImageMsg());
-    }
-
-    // method to get the starting location of the kicker
-    move_base_msgs::MoveBaseGoal getStartingLocation()
-    {
-        move_base_msgs::MoveBaseGoal startingLocation;
-
-        startingLocation.target_pose.header.frame_id = "base_link";
-        startingLocation.target_pose.header.stamp = ros::Time::now();
-        startingLocation.target_pose.pose.position.x = (goalLowerX + goalUpperX) / 2.0;
-        startingLocation.target_pose.pose.position.y = 6.0; //TODO: maybe change this later?
-        startingLocation.target_pose.pose.orientation.w = 1;
-
-        return startingLocation;
     }
 
     // method where the robot decides which action to take (try to make goal or search for ball)
@@ -381,7 +257,6 @@ class KickerRobot
     // method to handle game commands
     void gameCommandCallback(const std_msgs::String::ConstPtr &msg)
     {
-        /*
         inGame = false;
 
         if (strcmp(msg->data.c_str(), "start") == 0)
@@ -393,13 +268,6 @@ class KickerRobot
             twistMsg.angular.z = 0;
             velPub.publish(twistMsg);
         }
-        else if (strcmp(msg->data.c_str(), "field") == 0)
-        {
-            // publish command to go to the field
-            move_base_msgs::MoveBaseGoal startingLocation = getStartingLocation();
-            moveToLocation(startingLocation);
-        }
-        */
     }
 };
 
