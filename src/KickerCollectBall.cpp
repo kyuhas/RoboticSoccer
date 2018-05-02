@@ -237,7 +237,7 @@ class KickerRobot
         }
 
         else
-            trackBall(greenCircleIMG, greenIMG, GREEN);
+            trackBall(greenCircleIMG, srcIMG, GREEN);
 
         // Update GUI Window and publish modified stream
         cv::imshow(OPENCV_WINDOW, cvPtr->image);
