@@ -15,13 +15,6 @@
 #include <geometry_msgs/Quaternion.h>
 #include <cmath>
 
-// constants based on the position of the goal
-const double goalLowerX = 0.1;
-const double goalUpperX = 0.9;
-const double goalLowerY = 1.2;
-const double goalUpperY = 3.0;
-const double goalCenterY = (goalUpperY + goalLowerY) / 2.0;
-
 static const std::string OPENCV_WINDOW = "Image window";
 
 //constants used throughout the program
@@ -45,7 +38,6 @@ class GoalieRobot
     image_transport::Subscriber imageSub_;
     image_transport::Publisher imagePub_;
     ros::Subscriber gameSub_ = nodeHandle_.subscribe("/gameCommands", 10, &GoalieRobot::gameCommandCallback, this);
-    ros::Subscriber odomSub_ = nodeHandle_.subscribe("/odom", 1000, &GoalieRobot::odomCallback, this);
     ros::Publisher velPub = nodeHandle_.advertise<geometry_msgs::Twist>("/cmd_vel_mux/input/teleop", 1);
     geometry_msgs::Twist twistMsg;
     geometry_msgs::Pose goaliePos;
@@ -118,13 +110,6 @@ class GoalieRobot
         moveForNumOfSecs(2.75);
     }
 
-    //method to get the current velocity of the robot
-    void odomCallback(const nav_msgs::Odometry::ConstPtr &msg)
-    {
-        // robot linear and angular velocity rounded to the nearest 100th
-        botVelX = floor((msg->twist.twist.linear.x * 100 + 0.5)) / 100;
-    }
-
     void trackBall(std::vector<cv::Vec3f> circleIMG, cv::Mat srcIMG)
     {
         if (circleIMG.empty())
@@ -155,18 +140,15 @@ class GoalieRobot
             }
 
         // for easy debugging
-        std::stringstream ssRedDist, ssBotVelX, ssAlignError;
+        std::stringstream ssRedDist, ssAlignError;
         ssAlignError << alignError;
         ssRedDist << objDist;
-        ssBotVelX << botVelX;
 
         std::string alignErrStr = "    ALN_ERR: " + ssAlignError.str() + " px";
         std::string redDistStr = "    BALL_DST: " + ssRedDist.str() + " m";
-        std::string botVelStr = "    BOT_VEL: " + ssBotVelX.str() + " m/s";
 
         cv::putText(srcIMG, alignErrStr, cv::Point(350, 325), cv::FONT_HERSHEY_SIMPLEX, 0.5, blue, 1, CV_AA);
         cv::putText(srcIMG, redDistStr, cv::Point(350, 350), cv::FONT_HERSHEY_SIMPLEX, 0.5, blue, 1, CV_AA);
-        cv::putText(srcIMG, botVelStr, cv::Point(350, 400), cv::FONT_HERSHEY_SIMPLEX, 0.5, blue, 1, CV_AA);
     }
 
     //method to have the robot search for the ball and move toward it
@@ -217,6 +199,8 @@ class GoalieRobot
     void gameCommandCallback(const std_msgs::String::ConstPtr &msg)
     {
         inGame = false;
+
+        ROS_INFO("In GC callback");
 
         if (strcmp(msg->data.c_str(), "start") == 0)
             inGame = true;
