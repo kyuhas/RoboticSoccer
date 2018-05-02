@@ -164,7 +164,7 @@ class KickerRobot
         {
             ROS_INFO("I have the red ball and can see the goal");
             // if you are far away from the goal, move toward it. otherwise, try to kick the ball
-            if (objDist[BLUE] > 2.0)
+            if (objDist[BLUE] > 2.5)
 	    {
 		//twistMsg.angular.z = 0;
                 twistMsg.linear.x = MAX_BOT_VEL;
