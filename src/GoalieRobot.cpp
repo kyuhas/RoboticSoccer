@@ -26,7 +26,7 @@ static const std::string OPENCV_WINDOW = "Image window";
 
 //constants used throughout the program
 #define RGB_FOCAL_LEN_MM 138.90625 // camera focal length in mm ... 525 pixels
-#define BALL_DIAM_MM 200.0         // 8" diameter ball in mm
+#define BALL_DIAM_MM 203.2         // 8" diameter ball in mm
 #define CAMERA_HEIGHT_MM 300.0     // height of camera off ground in mm
 #define IMG_HEIGHT_PX 480.0        // in pixels
 #define IMG_WIDTH_PX 640.0         // in pixels
@@ -37,15 +37,6 @@ static const std::string OPENCV_WINDOW = "Image window";
 #define X 0
 #define Y 1
 #define R 2
-#define MID_X_LOW 150
-#define MID_X_HIGH 500
-#define LOW_LEFT_ANGLE_Z -0.8
-#define HIGH_LEFT_ANGLE_Z -0.7
-#define LOW_RIGHT_ANGLE_Z 0.7
-#define HIGH_RIGHT_ANGLE_Z 0.85
-#define LOW_RIGHT_ANGLE_W 0.6
-#define HIGH_RIGHT_ANGLE_W 0.7
-#define HIGH_STRAIGHT_ANGLE_Z -0.9
 
 class GoalieRobot
 {
@@ -54,14 +45,11 @@ class GoalieRobot
     image_transport::Subscriber imageSub_;
     image_transport::Publisher imagePub_;
     ros::Subscriber gameSub_ = nodeHandle_.subscribe("/gameCommands", 10, &GoalieRobot::gameCommandCallback, this);
-    ros::Subscriber amclSub_ = nodeHandle_.subscribe("/amcl_pose", 10, &GoalieRobot::setPose, this);
     ros::Subscriber odomSub_ = nodeHandle_.subscribe("/odom", 1000, &GoalieRobot::odomCallback, this);
     ros::Publisher velPub = nodeHandle_.advertise<geometry_msgs::Twist>("/cmd_vel_mux/input/teleop", 1);
     geometry_msgs::Twist twistMsg;
     geometry_msgs::Pose goaliePos;
 
-    ros::Subscriber mbcSub = nodeHandle_.subscribe("/move_base_controller_result", 10, &GoalieRobot::mbControllerResultCallback, this);
-    ros::Publisher mbcPub = nodeHandle_.advertise<move_base_msgs::MoveBaseGoal>("/goal_location", 1);
     cv::Scalar black = (0, 255, 5), blue = (200, 200, 250);
 
     bool inGame, goalSet;
@@ -101,26 +89,6 @@ class GoalieRobot
             velPub.publish(twistMsg);
     }
 
-    // if we have reached our goal, goalSet is now false
-    void mbControllerResultCallback(const std_msgs::String::ConstPtr &msg)
-    {
-        if (goalSet && strcmp(msg->data.c_str(), "true") == 0)
-            goalSet = false;
-    }
-
-    // method to set the pose of the goalie robot. If out of goal bounds, move
-    // to the center of the goal
-    void setPose(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msg)
-    {
-        goaliePos = msg->pose.pose;
-        /*
-			if(goaliePos.position.x < goalLowerX || goaliePos.position.x > goalUpperX
-				|| goaliePos.position.y < goalLowerY || goaliePos.position.y > goalUpperY) {
-				moveToLocation(getStartingLocation());
-			}
-			*/
-    }
-
     // method to have the robot move so that it can see the ball
     void moveTurtleBot(double alignError, double objDist)
     {
@@ -147,10 +115,6 @@ class GoalieRobot
         twistMsg.linear.x = -0.5;
         twistMsg.angular.z = -2.0 * alignError;
 
-        /*
-        there tended to be a small amount of inconsistency in the robot stopping where it started,
-        and making it move back for an additional 0.25 seconds seemed to help it be more accurate
-        */
         moveForNumOfSecs(2.75);
     }
 
@@ -240,30 +204,11 @@ class GoalieRobot
         imagePub_.publish(cvPtr->toImageMsg());
     }
 
-    //method to send the ball to a specific location
-    void moveToLocation(move_base_msgs::MoveBaseGoal goal)
-    {
-        goalSet = true;
-        mbcPub.publish(goal);
-    }
-
-    move_base_msgs::MoveBaseGoal getStartingLocation()
-    {
-        move_base_msgs::MoveBaseGoal startingLocation;
-        startingLocation.target_pose.header.frame_id = "base_link";
-        startingLocation.target_pose.header.stamp = ros::Time::now();
-        startingLocation.target_pose.pose.position.x = (goalLowerX + goalUpperX) / 2.0;
-        startingLocation.target_pose.pose.position.y = 1.0;
-        startingLocation.target_pose.pose.position.z = goaliePos.position.z;
-        startingLocation.target_pose.pose.orientation.z = -1;
-        return startingLocation;
-    }
-
     //method where the robot decides which action to take (try to block goal or search for ball)
     void playSoccer(const sensor_msgs::ImageConstPtr &msg)
     {
-        //if (!inGame)
-        // return;
+        if (!inGame)
+            return;
 
         searchForBall(msg);
     }
@@ -273,8 +218,6 @@ class GoalieRobot
     {
         inGame = false;
 
-        ROS_INFO("In GC callback");
-   
         if (strcmp(msg->data.c_str(), "start") == 0)
             inGame = true;
 
@@ -283,12 +226,6 @@ class GoalieRobot
             twistMsg.linear.x = 0;
             twistMsg.angular.z = 0;
             velPub.publish(twistMsg);
-        }
-
-        else if (strcmp(msg->data.c_str(), "field") == 0)
-        {
-            //publish command to go to the field
-            moveToLocation(getStartingLocation());
         }
     }
 };
