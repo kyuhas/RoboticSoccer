@@ -60,9 +60,7 @@ class GoalieRobot
         imagePub_ = imageTransport_.advertise("/image_converter/output_video", 10);
 
         //initialize bools
-		// for testing
-		// inGame = false;
-        inGame = true;
+        inGame = false;
     }
     //destructor
     ~GoalieRobot() {}
@@ -189,8 +187,6 @@ class GoalieRobot
     void gameCommandCallback(const std_msgs::String::ConstPtr &msg)
     {
         inGame = false;
-
-        ROS_INFO("In GC callback");
 
         if (strcmp(msg->data.c_str(), "start") == 0)
             inGame = true;
