@@ -17,8 +17,6 @@
 #include <math.h>
 #include <limits>
 
-//<node name="kicker_collect" pkg="final_project" type="kicker_collect_ball" />
-
 //constants used throughout the program
 #define RGB_FOCAL_LEN_MM 138.90625 // camera focal length in mm ... 525 pixels
 #define BALL_DIAM_MM 203.2         // 8" diameter ball in mm
@@ -106,7 +104,6 @@ class KickerRobot
             // if you are far away from the goal, move toward it. otherwise, try to kick the ball
             if (objDist[GREEN] > 2.5)
 	    {
-		//twistMsg.angular.z = 0;
                 twistMsg.linear.x = MAX_BOT_VEL;
 	    }
 
@@ -195,9 +192,6 @@ class KickerRobot
         std::vector<cv::Vec3f> circleIMG, redCircleIMG, greenCircleIMG;
         cv::Mat srcIMG, hsvIMG, redIMG_lower, redIMG_upper, redIMG, greenIMG_lower, greenIMG_upper, greenIMG, greenRange;
 
-        cv::Scalar black = (0, 255, 5);    // RGB color for circle to be drawn on image
-        cv::Scalar blue = (200, 200, 250); // RGB color for text displayed on image
-
         try
         {
             cvPtr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
@@ -218,7 +212,7 @@ class KickerRobot
 
             else
             {
-				cv::inRange(hsvIMG, cv::Scalar(45, 100, 100), cv::Scalar(75, 255, 255), greenRange);
+		cv::inRange(hsvIMG, cv::Scalar(45, 100, 100), cv::Scalar(75, 255, 255), greenRange);
                 cv::addWeighted(greenRange, 1.0, greenRange, 1.0, 0.0, greenIMG);
                 cv::GaussianBlur(greenIMG, greenIMG, cv::Size(9, 9), 2, 2);
                 cv::HoughCircles(greenIMG, greenCircleIMG, CV_HOUGH_GRADIENT, 1, hsvIMG.rows / 8, 100, 20, MIN_RADIUS, MAX_RADIUS);
@@ -232,9 +226,7 @@ class KickerRobot
         }
 
         if (!hasRedBall)
-        {
             trackBall(redCircleIMG, srcIMG, RED);
-        }
 
         else
             trackBall(greenCircleIMG, srcIMG, GREEN);

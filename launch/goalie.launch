@@ -10,10 +10,8 @@
     <param name="dict" value="/home/kyuhas/catkin_ws/src/final_project/params/8403.dic"/>
   </node>
 
-
   <node name="pocketsphinx_gameCommands" pkg="final_project" type="pocketsphinx_gameCommands.py" />
 
-  <node name="move_base_controller" pkg="final_project" type="move_base_controller.py" />
-
   <node name="goalie" pkg="final_project" type="goalie_robot" />
+
 </launch>

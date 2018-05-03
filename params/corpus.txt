@@ -1,6 +1,0 @@
-move to field
-start
-stop
-pause
-kicker wins
-goalie wins
