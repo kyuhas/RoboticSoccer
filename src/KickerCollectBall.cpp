@@ -124,11 +124,12 @@ class KickerRobot
     // method to track the ball
     void trackBall(std::vector<cv::Vec3f> circleIMG, cv::Mat srcIMG, int color)
     {
-        // if the image does not contain any of the color we are looking for, give that color a zero distance
+        // if the image does not contain a ball of the specified color
         isEmpty[color] = circleIMG.empty();
 
         if (isEmpty[color])
         {
+	    // if we used to have the red ball (we have now captured it in our U-Guide)
             if (color == RED && objDist[RED] <= 0.5 && objDist[RED] != 0.0)
             {
                 hasRedBall = true;
@@ -237,7 +238,7 @@ class KickerRobot
         imagePub_.publish(cvPtr->toImageMsg());
     }
 
-    // method where the robot decides which action to take (try to make goal or search for ball)
+    // determine if kicker should search for ball or kick
     void playSoccer(const sensor_msgs::ImageConstPtr &msg)
     {
         if (!inGame)
